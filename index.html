@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Muncie MHP — Rehab Tracker</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;background:#F4F6F8;color:#1F1F1F;padding:16px}
+h1{font-size:20px;font-weight:600;color:#1F2E3D;margin-bottom:4px}
+.sub{font-size:12px;color:#6B7A8D;margin-bottom:14px}
+.top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.top-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.save-ind{font-size:11px;padding:4px 10px;border-radius:12px;background:#E8ECF0;color:#6B7A8D;font-weight:500}
+.sync-ind{font-size:11px;padding:4px 10px;border-radius:12px;background:#E8ECF0;color:#6B7A8D;font-weight:500}
+.sync-ind.syncing{background:#FEF3E2;color:#9A6A1A}
+.sync-ind.saved{background:#E6F4EA;color:#1A6638}
+.sync-ind.err{background:#FCE8E8;color:#B42318}
+.save-ind.saved{color:#2D6A2D;background:#DFF0DF}
+.save-ind.syncing{color:#7A5200;background:#FFF0CC}
+.btn-sm{font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid #D0D7DF;background:#fff;color:#3D4D5C;cursor:pointer;font-weight:500}
+.btn-sm:hover{background:#F0F3F6}
+.banner{display:none;background:#1F4E79;color:#fff;font-size:11px;padding:8px 14px;border-radius:8px;margin-bottom:10px;text-align:center;font-weight:500}
+.banner.active{display:block}
+.cols{display:grid;grid-template-columns:repeat(11,minmax(96px,1fr));gap:8px;align-items:start;overflow-x:auto}
+.lane{background:#fff;border:1px solid #E2E8EF;border-radius:10px;display:flex;flex-direction:column;min-width:90px}
+.lane.drop-target{outline:2px solid #2D7DD2;outline-offset:2px;cursor:pointer}
+.lane-hdr{padding:8px 7px 7px;border-bottom:1px solid #E2E8EF;text-align:center;border-radius:10px 10px 0 0}
+.lane-title{font-size:10px;font-weight:600;letter-spacing:.03em;display:block;line-height:1.3}
+.lane-count{font-size:18px;font-weight:700;margin-top:3px;display:block}
+.lane-sum{font-size:9px;margin-top:4px;display:block;line-height:1.7;opacity:.9}
+.lane-sum span{display:block}
+.lane-body{min-height:60px;padding:7px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;flex:1}
+.tile{width:100%;max-width:76px;min-height:44px;border-radius:7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;border:1.5px solid transparent;user-select:none;padding:5px 4px;position:relative;transition:background .2s,border-color .2s,transform .15s,box-shadow .15s}
+.tile:hover{filter:brightness(.96)}
+.tile.selected{transform:scale(1.1);box-shadow:0 0 0 3px #2D7DD2,0 4px 14px rgba(0,0,0,.15);z-index:10}
+.tile-id{font-size:10px;font-weight:700;text-align:center;line-height:1.2}
+.tile-type{font-size:8px;opacity:.65;text-align:center;margin-top:1px;text-transform:uppercase;letter-spacing:.04em}
+.tile-rent{font-size:9px;margin-top:3px;text-align:center;font-weight:500}
+.tile-rehab{font-size:8.5px;margin-top:2px;text-align:center;font-weight:600;opacity:.78;letter-spacing:.01em}
+.evict-dot{position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:#E53E3E}
+.handy-dot{position:absolute;bottom:3px;left:3px;width:6px;height:6px;border-radius:50%;background:#F2C200}
+.add-btn{width:100%;max-width:76px;height:34px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1.5px dashed #C8D2DC;background:transparent;color:#9AAAB8;font-size:18px;margin-top:2px}
+.add-btn:hover{background:#F4F6F8}
+.rentbar{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin-bottom:12px}
+.rb{background:#fff;border:1px solid #E2E8EF;border-radius:9px;padding:.5rem .85rem;flex:1;min-width:120px}
+.rb.combined{background:#1F2E3D;border-color:#1F2E3D}
+.rb-l{font-size:10px;color:#6B7A8D;margin-bottom:2px;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.rb.combined .rb-l{color:#9DB2C8}
+.rb-v{font-size:19px;font-weight:700;color:#1F2E3D}
+.rb.combined .rb-v{color:#fff}
+.rb-sub{font-size:10px;color:#8898A8;margin-top:1px}
+.rb.combined .rb-sub{color:#7E94AC}
+@media(max-width:600px){.rb{min-width:calc(50% - 4px)}}
+.rentbar.noev .rb{background:#FBFCFD;border-style:dashed}
+.rentbar.noev .rb.combined{background:#2E3D4D;border-style:solid}
+.rentbar-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#7A8A9A;margin:2px 0 6px}
+.rentbar.possible .rb{background:#F0FAF4;border-color:#A8D8BE}
+.rentbar.possible .rb-v{color:#1A6638}
+.rentbar.possible .rb.combined{background:#1A5A38;border-color:#1A5A38}
+.rentbar.possible .rb.combined .rb-v{color:#fff}
+.rentbar-lbl.possible{color:#1A6638}
+.uptick-hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:2px 0 6px}
+.rentbar-lbl.uptick{color:#1F4E79;margin:0}
+.phase-toggle{display:inline-flex;gap:0;border:1px solid #B8C4D0;border-radius:7px;overflow:hidden}
+.phase-toggle button{font-size:10px;font-weight:600;padding:4px 10px;border:none;background:#fff;color:#5A6A7A;cursor:pointer;font-family:inherit;border-right:1px solid #E2E8EF}
+.phase-toggle button:last-child{border-right:none}
+.phase-toggle button.active{background:#1F4E79;color:#fff}
+.rentbar.uptick .rb{background:#EEF4FB;border-color:#A8C4E0}
+.rentbar.uptick .rb-v{color:#1F4E79}
+.rentbar.uptick .rb.combined{background:#1F4E79;border-color:#1F4E79}
+.rentbar.uptick .rb.combined .rb-v{color:#fff}
+.rentbar.uptick .rb-brk{font-size:10px;color:#5A6A7A;margin-top:3px;font-weight:600}
+.rentbar.uptick .rb.combined .rb-brk{color:#BDD0E4}
+.rentbar.uptick .rb-up{color:#1A8A4A}
+.rentbar.uptick .rb.combined .rb-up{color:#7FE0A8}
+.rehabsum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.rs{background:#fff;border:1px solid #E2E8EF;border-radius:9px;padding:.55rem .75rem;border-top:3px solid #ccc}
+.rs.p1r{border-top-color:#F0A030}
+.rs.p2r{border-top-color:#E08020}
+.rs.p1d{border-top-color:#EF9090}
+.rs.p2d{border-top-color:#C85050}
+.rs-h{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#3D4D5C;margin-bottom:5px}
+.rs-row{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-top:2px}
+.rs-k{color:#7A8A9A}
+.rs-v{font-weight:700;color:#1F2E3D}
+.rs-v.rem{color:#B45309}
+@media(max-width:600px){.rehabsum{grid-template-columns:repeat(2,1fr)}}
+.totals{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.noibar{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.noi{background:#fff;border:1px solid #E2E8EF;border-radius:9px;padding:.55rem .8rem;border-top:3px solid #5B7DB1}
+.noi.val{background:#16324D;border-color:#16324D;border-top-color:#16324D}
+.noi-l{font-size:10px;color:#6B7A8D;margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.noi.val .noi-l{color:#9DB6CE}
+.noi-v{font-size:19px;font-weight:700;color:#1F2E3D}
+.noi.val .noi-v{color:#fff}
+.noi-sub{font-size:9.5px;color:#8898A8;margin-top:2px}
+.noi.val .noi-sub{color:#7E97AE}
+.noi-input{font-size:15px;font-weight:700;color:#1F2E3D;border:1px solid #C8D2DC;border-radius:6px;padding:3px 6px;width:100%;font-family:inherit;background:#FBFCFD}
+.noi-input:focus{outline:none;border-color:#5B7DB1;background:#fff}
+.noi-rent-select{font-size:10px;font-weight:600;color:#16324D;border:1px solid #C8D2DC;border-radius:6px;padding:3px 4px;width:100%;font-family:inherit;background:#FBFCFD;margin-top:3px;cursor:pointer}
+.noi-rent-select:focus{outline:none;border-color:#5B7DB1}
+.noi-caprow{display:flex;align-items:center;gap:6px;margin-top:2px}
+.noi-cap-input{font-size:15px;font-weight:700;color:#fff;border:1px solid #3D6088;border-radius:6px;padding:3px 6px;width:64px;font-family:inherit;background:#22456A;text-align:right}
+.noi-cap-input:focus{outline:none;border-color:#7FA8D8}
+@media(max-width:900px){.noibar{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.noibar{grid-template-columns:repeat(2,1fr)}}
+.tot{background:#fff;border:1px solid #E2E8EF;border-radius:9px;padding:.6rem .8rem}
+.tot-l{font-size:10px;color:#6B7A8D;margin-bottom:3px;font-weight:500}
+.tot-v{font-size:20px;font-weight:700;color:#1F2E3D}
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(15,25,40,.45);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.modal{background:#fff;border-radius:12px;padding:1.25rem 1.4rem;width:100%;max-width:540px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.9rem;padding-bottom:.7rem;border-bottom:1px solid #E2E8EF}
+.modal-title{font-size:15px;font-weight:700;color:#1F2E3D}
+.modal-sub{font-size:11px;color:#6B7A8D;margin-top:3px}
+.xbtn{background:none;border:none;cursor:pointer;color:#9AAAB8;font-size:20px;padding:0;line-height:1}
+.xbtn:hover{color:#1F2E3D}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.65rem 1rem;margin-bottom:.5rem}
+.fl{display:flex;flex-direction:column;gap:4px}
+.fl.full{grid-column:1/-1}
+.flbl{font-size:10px;color:#6B7A8D;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.finput{padding:6px 9px;border:1px solid #D0D7DF;border-radius:7px;background:#fff;color:#1F2E3D;font-size:12px;font-family:inherit;width:100%}
+.finput:focus{outline:none;border-color:#2D7DD2;box-shadow:0 0 0 2px rgba(45,125,210,.12)}
+.bbar-bg{height:7px;background:#EEF1F5;border-radius:4px;overflow:hidden;margin-top:6px}
+.bbar-fill{height:100%;border-radius:4px;transition:width .3s}
+.sec{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9AAAB8;margin:.8rem 0 .4rem;grid-column:1/-1;padding-top:.4rem;border-top:1px solid #F0F3F6}
+.clist{display:flex;flex-direction:column;gap:6px;margin-bottom:.65rem}
+.citem{background:#F7F9FB;border-radius:7px;padding:.5rem .75rem;border-left:3px solid #D0D7DF}
+.cmeta{font-size:10px;color:#9AAAB8;margin-bottom:2px;font-weight:500}
+.ctxt{font-size:12px;color:#1F2E3D;line-height:1.5}
+.no-c{font-size:12px;color:#9AAAB8;font-style:italic}
+textarea.finput{min-height:58px;resize:vertical}
+.btn-row{display:flex;justify-content:flex-end;gap:8px;margin-top:.75rem}
+.btn.danger{margin-right:auto;color:#B42318;border-color:#E8B0A8}
+.btn.danger:hover{background:#FCEAE8}
+.evict-toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:#1F2E3D;cursor:pointer;padding:8px 10px;border:1px solid #E8B0A8;border-radius:7px;background:#FDF4F3;font-weight:500}
+.evict-toggle input{width:16px;height:16px;cursor:pointer;accent-color:#E53E3E}
+.evict-dot-lg{width:9px;height:9px;border-radius:50%;background:#E53E3E;display:inline-block}
+.handy-toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:#1F2E3D;cursor:pointer;padding:8px 10px;border:1px solid #E5D08A;border-radius:7px;background:#FEFBF0;font-weight:500}
+.handy-toggle input{width:16px;height:16px;cursor:pointer;accent-color:#F2C200}
+.handy-dot-lg{width:9px;height:9px;border-radius:50%;background:#F2C200;display:inline-block}
+.btn{font-size:12px;padding:6px 14px;border-radius:8px;border:1px solid #D0D7DF;background:#fff;color:#3D4D5C;cursor:pointer;font-weight:500;font-family:inherit}
+.btn:hover{background:#F0F3F6}
+.btn.pri{background:#1F4E79;color:#fff;border-color:#1F4E79}
+.btn.pri:hover{background:#163A5A}
+.badge{display:inline-block;font-size:9px;padding:2px 6px;border-radius:8px;margin-left:6px;vertical-align:middle;font-weight:600}
+.badge-a{background:#DDEEFF;color:#1A4F8C}
+.badge-r{background:#DDFAEE;color:#1A6644}
+select.finput{cursor:pointer}
+@media(max-width:900px){.cols{grid-template-columns:repeat(5,1fr)}.totals{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.cols{grid-template-columns:repeat(3,1fr)}.totals{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div>
+    <h1>Muncie MHP — Rehab Tracker</h1>
+    <div class="sub">American (A-) &amp; Redwood (R-) · Tap a tile to select · Tap a column to move · Hold tile to edit</div>
+  </div>
+  <div class="top-right">
+    <span class="save-ind syncing" id="save-ind">Loading...</span>
+    <span class="sync-ind" id="sync-ind" style="display:none"></span>
+    <button class="btn-sm" id="export-btn">⬇ Export</button>
+    <button class="btn-sm" id="import-btn">⬆ Import</button>
+    <button class="btn-sm" id="reset-btn">Reset to original</button>
+    <input type="file" id="import-file" accept="application/json,.json" style="display:none">
+  </div>
+</div>
+
+<div class="banner" id="banner"></div>
+<div class="totals" id="totals"></div>
+<div class="rentbar-lbl" style="color:#16324D;margin-top:2px">Valuation Modeling</div>
+<div class="noibar" id="noibar"></div>
+<div class="rentbar" id="rentbar"></div>
+<div class="rentbar-lbl" id="rentbar-noev-lbl" style="display:none">Excluding eviction-flagged units</div>
+<div class="rentbar noev" id="rentbar-noev"></div>
+<div class="uptick-hdr">
+  <div class="rentbar-lbl uptick">Rehab rent uptick</div>
+  <div class="phase-toggle" id="phase-toggle">
+    <button data-ph="1">Include Phase 1</button>
+    <button data-ph="2">Include Phase 2</button>
+    <button data-ph="12" class="active">Phases 1 &amp; 2</button>
+  </div>
+</div>
+<div class="rentbar uptick" id="rentbar-uptick"></div>
+<div class="rentbar-lbl possible">All possible rent (prospective, lease-up potential)</div>
+<div class="rentbar possible" id="rentbar-possible"></div>
+<div class="rehabsum" id="rehabsum"></div>
+<div class="cols" id="cols"></div>
+<div id="modal-area"></div>
+
+<script>
+const SK='mhp-v2';
+
+/* ============================================================
+   ☁  CLOUD SYNC SETUP  (GitHub Gist)
+   To turn on cross-device sync, paste your two values below
+   between the quotes, then save this file. Leave blank to keep
+   using this device's local storage only.
+   ------------------------------------------------------------
+   GIST_TOKEN : your GitHub fine-grained token (Gists: read+write)
+   GIST_ID    : the ID from your secret gist's URL
+   ============================================================ */
+const GIST_TOKEN = "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";
+const GIST_ID    = "047c5c427d1543037cedbce31efa178b";
+const GIST_FILE  = "mhp-data.json";
+const SYNC_ON = ()=>GIST_TOKEN.length>10 && GIST_ID.length>5;
+let syncTimer=null, lastPushAt=0;
+
+function snapshot(){
+  return {app:'muncie-mhp',version:2,savedAt:new Date().toISOString(),
+    units:Object.values(td),
+    noi:{opex:noiOpex,cap:noiCap,rentKey:noiRentKey}};
+}
+
+async function gistPull(){
+  if(!SYNC_ON())return null;
+  try{
+    const r=await fetch(`https://api.github.com/gists/${GIST_ID}`,{
+      headers:{Authorization:`Bearer ${GIST_TOKEN}`,Accept:'application/vnd.github+json'}});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const g=await r.json();
+    const f=g.files&&g.files[GIST_FILE];
+    if(!f||!f.content)return null;
+    return JSON.parse(f.content);
+  }catch(e){console.warn('Gist pull failed',e);return null;}
+}
+
+async function gistPush(){
+  if(!SYNC_ON())return;
+  const body={files:{[GIST_FILE]:{content:JSON.stringify(snapshot(),null,2)}}};
+  try{
+    setSync('syncing');
+    const r=await fetch(`https://api.github.com/gists/${GIST_ID}`,{
+      method:'PATCH',
+      headers:{Authorization:`Bearer ${GIST_TOKEN}`,Accept:'application/vnd.github+json','Content-Type':'application/json'},
+      body:JSON.stringify(body)});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    lastPushAt=Date.now();setSync('ok');
+  }catch(e){console.warn('Gist push failed',e);setSync('err');}
+}
+
+function queuePush(){
+  if(!SYNC_ON())return;
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(gistPush,1200); // debounce rapid edits
+}
+
+function setSync(s){
+  const el=$('#sync-ind');if(!el)return;
+  const m={off:['',''],syncing:['☁ Syncing…','syncing'],ok:['☁ Synced','saved'],err:['☁ Sync error','err']};
+  const[t,c]=m[s]||['',''];el.textContent=t;el.className='sync-ind'+(c?' '+c:'');
+  el.style.display=t?'':'none';
+}
+const LANES=[
+  {id:'vacant-pads',  label:'Vacant Pads',    bg:'#EAF3FB',bd:'#7BB8E8',tx:'#0C3D6B'},
+  {id:'vacant-tohs',  label:'Vacant TOHs',     bg:'#E0F0EE',bd:'#6FB8AE',tx:'#0B4A42'},
+  {id:'vacant-pohs',  label:'Vacant POHs',     bg:'#F2F0EB',bd:'#B0ADA4',tx:'#3D3A33'},
+  {id:'demo-p1',      label:'Phase 1 Demo',    bg:'#FCEAEA',bd:'#EF9090',tx:'#6B1A1A'},
+  {id:'demo-p2',      label:'Phase 2 Demo',    bg:'#F7DEDE',bd:'#D86A6A',tx:'#5A1212'},
+  {id:'phase1-rehab', label:'Phase 1 Rehab',   bg:'#FEF3E2',bd:'#F0A030',tx:'#5E3200'},
+  {id:'phase2-rehab', label:'Phase 2 Rehab',   bg:'#FDEBD0',bd:'#E08020',tx:'#3D2000'},
+  {id:'in-rehab',     label:'In Rehab',        bg:'#FDE8F2',bd:'#E890C0',tx:'#6B1840'},
+  {id:'rehab-complete',label:'Rehab Complete', bg:'#E8F5E9',bd:'#88C878',tx:'#1A5020'},
+  {id:'leased-pohs',  label:'Leased POHs',     bg:'#EEECFE',bd:'#A8A0E8',tx:'#2E2480'},
+  {id:'tohs',         label:'TOHs',            bg:'#E2F6F0',bd:'#58C8A0',tx:'#084838'},
+];
+const LM={};LANES.forEach(l=>LM[l.id]=l);
+
+const DD=[{"id":"A-1","park":"American","pad":"1","type":"toh","lane":"tohs","cur_lot_rent":300,"cur_poh_rent":null,"pro_lot_rent":400,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"leave as-is","eviction":null,"status":"occupied","extraComments":[]},{"id":"A-2","park":"American","pad":"2","type":"toh","lane":"vacant-tohs","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":450,"pro_poh_rent":300,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":"abandoned, will claim title in 30 days. need to assess condition","decision":"leave as-is","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-3","park":"American","pad":"3","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill pad","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-4","park":"American","pad":"4","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill pad","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-5","park":"American","pad":"5","type":"poh","lane":"in-rehab","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":400,"pro_poh_rent":350,"rehab_estimate":8000,"spent_to_date":1250,"spent_next_2wk":3000,"phase":"1","vendor":"jason coons and crew","comments":"Rehab has begun. electrician needs to come out, need a-frame and a/c coil. everything else done","decision":"rehab","eviction":null,"status":"vacant","extraComments":[{"ts":"Jun 20 9:27 PM","txt":"Jared needs to follow up. Not yet done to be rent ready"},{"ts":"Jun 7 8:30 PM","txt":"electrician came out. he thinks the a/c coil is fixed. issue that tripped the breakers is solved. still rehabbing subfloor. no other changes from last comment. Expected completion for date for rehab is End June"},{"ts":"May 30 8:46 PM","txt":"A/C is rebuilt with new coil. electrician needs to come back out, will be out to park this thursday. had to tear out bedroom subfloor. then after that we can do carpet, linoleum, finishes. target completion mid-june."}],"handyman":null,"handyman_rehab":null},{"id":"A-6","park":"American","pad":"6","type":"toh","lane":"tohs","cur_lot_rent":400,"cur_poh_rent":null,"pro_lot_rent":400,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"leave as-is","eviction":null,"status":"occupied","extraComments":[]},{"id":"A-7","park":"American","pad":"7","type":"poh","lane":"demo-p1","cur_lot_rent":450,"cur_poh_rent":null,"pro_lot_rent":450,"pro_poh_rent":200,"rehab_estimate":4000,"spent_to_date":2200,"spent_next_2wk":1800,"phase":"1","vendor":null,"comments":"demo","decision":"Demo","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-8","park":"American","pad":"8","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill pad","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-9","park":"American","pad":"9","type":"poh","lane":"phase2-rehab","cur_lot_rent":450,"cur_poh_rent":450,"pro_lot_rent":450,"pro_poh_rent":450,"rehab_estimate":4000,"spent_to_date":2000,"spent_next_2wk":2000,"phase":"2","vendor":"George, Jimmy","comments":"Electrical done. Move family in from A-7, comp first two months of POH rent. May need additional plumbing","decision":"rehab","eviction":null,"status":"occupied","extraComments":[{"ts":"May 30 8:38 PM","txt":"plumbing issue is going to require an extra $1k. they are temporarily using plumbing from another unit as temporary measure. will likely do the rest of the fix in phase 2."}]},{"id":"A-10","park":"American","pad":"10","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill pad","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-11","park":"American","pad":"11","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill pad","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-12","park":"American","pad":"12","type":"poh","lane":"phase2-rehab","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":450,"pro_poh_rent":350,"rehab_estimate":17400,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":null,"comments":null,"decision":"rehab","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-13","park":"American","pad":"13","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-14","park":"American","pad":"14","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-15","park":"American","pad":"15","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-16","park":"American","pad":"16","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-17","park":"American","pad":"17","type":"poh","lane":"phase2-rehab","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":475,"pro_poh_rent":425,"rehab_estimate":20400,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":null,"comments":null,"decision":"rehab","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-18","park":"American","pad":"18","type":"poh","lane":"phase2-rehab","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":475,"pro_poh_rent":425,"rehab_estimate":21400,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":null,"comments":null,"decision":"rehab","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-19","park":"American","pad":"19","type":"toh","lane":"tohs","cur_lot_rent":400,"cur_poh_rent":null,"pro_lot_rent":425,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"leave as-is","eviction":null,"status":"occupied","extraComments":[]},{"id":"A-20","park":"American","pad":"20","type":"poh","lane":"in-rehab","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":475,"pro_poh_rent":525,"rehab_estimate":8000,"spent_to_date":1250,"spent_next_2wk":3000,"phase":"1","vendor":"jason coons and crew","comments":"Demo complete. Need subfloor, floor, paint, fixtures. 10 day rehab","decision":"rehab","eviction":null,"status":"vacant","extraComments":[{"ts":"Jun 20 9:27 PM","txt":"need to get update from jason to see if rent ready"},{"ts":"Jun 7 8:32 PM","txt":"Still have 3-5 days of work. finishing subfloor which took longer than expected. after that, its floor/paint/fixtures. Rent Ready June 19th."},{"ts":"May 30 8:47 PM","txt":"should be complete end of next week."}],"handyman":null,"handyman_rehab":null},{"id":"A-21","park":"American","pad":"21","type":"poh","lane":"leased-pohs","cur_lot_rent":475,"cur_poh_rent":525,"pro_lot_rent":475,"pro_poh_rent":525,"rehab_estimate":12000,"spent_to_date":12000,"spent_next_2wk":null,"phase":"1","vendor":"Steve/In-house","comments":"rehab complete, in process of lease sign and tenant moving in","decision":"rehab","eviction":null,"status":"vacant","extraComments":[{"ts":"May 30 8:50 PM","txt":"Have a lease signed for last week june!"}]},{"id":"A-22","park":"American","pad":"22","type":"toh","lane":"demo-p2","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":3550,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":null,"comments":"woman owns it, leave as is then demo when abandoned","decision":"Demo","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-23","park":"American","pad":"23","type":"poh","lane":"phase2-rehab","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":450,"pro_poh_rent":475,"rehab_estimate":20400,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":null,"comments":null,"decision":"rehab","eviction":null,"status":"vacant","extraComments":[],"handyman":"Y"},{"id":"A-24","park":"American","pad":"24","type":"toh","lane":"tohs","cur_lot_rent":300,"cur_poh_rent":null,"pro_lot_rent":325,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"leave as-is","eviction":null,"status":"occupied","extraComments":[]},{"id":"A-25","park":"American","pad":"25","type":"toh","lane":"demo-p2","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":2998,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":null,"comments":null,"decision":"Demo","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-26","park":"American","pad":"26","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-27","park":"American","pad":"27","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-28","park":"American","pad":"28","type":"poh","lane":"phase2-rehab","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":450,"pro_poh_rent":450,"rehab_estimate":17400,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":null,"comments":null,"decision":"rehab","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-29","park":"American","pad":"29","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-30","park":"American","pad":"30","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill","eviction":null,"status":"vacant","extraComments":[]},{"id":"A-31","park":"American","pad":"31","type":"poh","lane":"phase2-rehab","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":450,"pro_poh_rent":450,"rehab_estimate":14000,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":"cindy/terry?","comments":"Need interior and exterior rehab. Would need to move before rehab for double wide","decision":"rehab","eviction":null,"status":"vacant","extraComments":[{"ts":"Jun 7 8:58 PM","txt":"Tagged for handyman special. Dollars would go into siding, new exterior and interior doors, plumbing repairs, subfloor repairs."}],"handyman":"Y","handyman_rehab":6000},{"id":"A-SFH","park":"American","pad":"SFH","type":"poh","lane":"in-rehab","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":500,"pro_poh_rent":500,"rehab_estimate":8000,"spent_to_date":null,"spent_next_2wk":8000,"phase":"1","vendor":"steve/jonathan","comments":"now vacant, clean out started. Scope updated, getting BOM established.","decision":"rehab","eviction":null,"status":"vacant","extraComments":[{"ts":"Jun 20 9:29 PM","txt":"Would rent as a handyman special at $400/month"},{"ts":"Jun 20 9:27 PM","txt":"May turn into handy man special"},{"ts":"Jun 7 8:37 PM","txt":"Pest guy coming wed june 10th. Will debug entire place, done in 24-48 hours. \nThis tuesday, Steve will get full Bathroom materials list in addition to windows. \nRehab will consist of:\n- full bathroom rehab (starts week of June 14th, demo right after bug treatment done)\n- 3 window replacements (starts june 14th)\n- 1 exterior door replacement (starts june 14th)\n- siding repairs (starts june 14th)\n- misc. roof repairs (starts june 14th)\n- buy flooring and paint (Jonathan and Angel put in themselves)"},{"ts":"May 30 8:49 PM","txt":"BOM is established. May need to bring pest people in there due to roaches. Targeted completion to get Angel/Jonathan moved in end of june."}],"handyman_rehab":null,"handyman":"Y"},{"id":"R-1","park":"Redwood","pad":"1","type":"poh","lane":"phase2-rehab","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":450,"pro_poh_rent":400,"rehab_estimate":17400,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":"TBD","comments":null,"decision":"rehab","eviction":null,"status":"vacant","extraComments":[]},{"id":"R-2","park":"Redwood","pad":"2","type":"toh","lane":"tohs","cur_lot_rent":450,"cur_poh_rent":null,"pro_lot_rent":450,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"leave as-is","eviction":null,"status":"occupied","extraComments":[{"ts":"Jun 20 10:18 PM","txt":"carried ~4k in back rent when we closed. has paid it down. pays extra when he can"}],"handyman_rehab":null,"handyman":null},{"id":"R-3","park":"Redwood","pad":"3","type":"toh","lane":"tohs","cur_lot_rent":400,"cur_poh_rent":null,"pro_lot_rent":400,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"leave as-is","eviction":null,"status":"occupied","extraComments":[]},{"id":"R-4","park":"Redwood","pad":"4","type":"toh","lane":"tohs","cur_lot_rent":350,"cur_poh_rent":null,"pro_lot_rent":375,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"leave as-is","eviction":null,"status":"occupied","extraComments":[{"ts":"Jun 20 10:17 PM","txt":"Did not pay rent for 2 years to the park. back rent was forgiven. Pay current rent plus another 150/month extra"}],"handyman_rehab":null,"handyman":null},{"id":"R-5","park":"Redwood","pad":"5","type":"poh","lane":"demo-p2","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":3000,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":null,"comments":null,"decision":"Demo","eviction":null,"status":"vacant","extraComments":[]},{"id":"R-6","park":"Redwood","pad":"6","type":"toh","lane":"leased-pohs","cur_lot_rent":500,"cur_poh_rent":400,"pro_lot_rent":500,"pro_poh_rent":400,"rehab_estimate":9500,"spent_to_date":9500,"spent_next_2wk":null,"phase":"1","vendor":"Miguel","comments":"Work completed, lease signed.","decision":"rehab","eviction":"Y","status":"occupied","extraComments":[{"ts":"Jun 20 10:27 PM","txt":"had a lapse in work... may be lapsing in rent, tbd. Have received written notice."}],"handyman_rehab":null,"handyman":null},{"id":"R-7","park":"Redwood","pad":"7","type":"toh","lane":"demo-p1","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":3000,"spent_to_date":2132,"spent_next_2wk":null,"phase":"1","vendor":"steve/jonathan","comments":"Demo in progress. Pulling scrap out","decision":"demo","eviction":null,"status":"vacant","extraComments":[{"ts":"May 30 8:55 PM","txt":"90% torn down. will get a final dumpster invoice."}]},{"id":"R-8","park":"Redwood","pad":"8","type":"toh","lane":"demo-p2","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":3000,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":null,"comments":null,"decision":"demo","eviction":null,"status":"vacant","extraComments":[]},{"id":"R-9","park":"Redwood","pad":"9","type":"toh","lane":"tohs","cur_lot_rent":400,"cur_poh_rent":null,"pro_lot_rent":400,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":"on payment plan throughout the month","decision":"leave as-is","eviction":"Y","status":"occupied","extraComments":[{"ts":"Jun 20 10:21 PM","txt":"End of next week we have them seeing judge. After they dont move property can get abandoned property title transfer. 60-80 days to get title after they are evicted. Will be prime handyman special."},{"ts":"May 30 9:07 PM","txt":"Filing eviction 6/1.  Violating park rules and not paying rent, maybe drugs. Will likely have to take this. 30 day notice of lease termination. May offer ~500 for trailer"}],"handyman_rehab":null,"handyman":null},{"id":"R-10","park":"Redwood","pad":"10","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"leave as-is","eviction":null,"status":"vacant","extraComments":[]},{"id":"R-11","park":"Redwood","pad":"11","type":"poh","lane":"rehab-complete","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":500,"pro_poh_rent":400,"rehab_estimate":9650,"spent_to_date":9650,"spent_next_2wk":0,"phase":"1","vendor":"jason coons","comments":"done, just blue taping, touchups, running tubs. marketing now","decision":"rehab","eviction":null,"status":"vacant","extraComments":[{"ts":"Jun 20 9:26 PM","txt":"Lease is signed. awaiting deposit."},{"ts":"Jun 20 9:25 PM","txt":"Rehab is complete"},{"ts":"May 30 8:52 PM","txt":"work is complete, waiting on final invoice from jason. Honing in on someone to lease this, nothing signed yet. Should get leased next week."}],"handyman":null,"handyman_rehab":null},{"id":"R-12","park":"Redwood","pad":"12","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill","eviction":null,"status":"vacant","extraComments":[]},{"id":"R-13","park":"Redwood","pad":"13","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill","eviction":null,"status":"vacant","extraComments":[]},{"id":"R-14","park":"Redwood","pad":"14","type":"toh","lane":"tohs","cur_lot_rent":350,"cur_poh_rent":null,"pro_lot_rent":500,"pro_poh_rent":400,"rehab_estimate":10000,"spent_to_date":null,"spent_next_2wk":null,"phase":"1","vendor":"TBD","comments":"not evict, maybe keep as rehab","decision":"rehab","eviction":null,"status":"occupied","extraComments":[]},{"id":"R-15","park":"Redwood","pad":"15","type":"poh","lane":"leased-pohs","cur_lot_rent":450,"cur_poh_rent":200,"pro_lot_rent":450,"pro_poh_rent":200,"rehab_estimate":10000,"spent_to_date":10000,"spent_next_2wk":null,"phase":"1","vendor":null,"comments":"lease signed!","decision":"rehab","eviction":null,"status":"occupied","extraComments":[{"ts":"May 30 8:54 PM","txt":"guy moved out and broke lease. may need to lower price point. $450 lot rent, $200 POH rent."}],"handyman":null},{"id":"R-16","park":"Redwood","pad":"16","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill","eviction":null,"status":"vacant","extraComments":[]},{"id":"R-17","park":"Redwood","pad":"17","type":"toh","lane":"tohs","cur_lot_rent":400,"cur_poh_rent":null,"pro_lot_rent":425,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":"350 lot rent now, up to 400 june 1","decision":"leave as-is","eviction":null,"status":"occupied","extraComments":[]},{"id":"R-18","park":"Redwood","pad":"18","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"In-fill","eviction":null,"status":"vacant","extraComments":[]},{"id":"R-19","park":"Redwood","pad":"19","type":"toh","lane":"tohs","cur_lot_rent":375,"cur_poh_rent":null,"pro_lot_rent":400,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":"Raise to $400/month Feb 2027","decision":"leave as-is","eviction":null,"status":"occupied","extraComments":[]},{"id":"R-20","park":"Redwood","pad":"20","type":"vacant pad","lane":"vacant-pads","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":null,"eviction":null,"status":"vacant","extraComments":[]},{"id":"R-21","park":"Redwood","pad":"21","type":"poh","lane":"phase2-rehab","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":450,"pro_poh_rent":400,"rehab_estimate":14400,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":"TBD","comments":"Do exterior at end phase 1, rest of rehab in phase 2","decision":"rehab","eviction":null,"status":"vacant","extraComments":[{"ts":"Jun 7 9:00 PM","txt":"Tagged as handy man special. dollars would go into: siding, skirting, plumbing, floor repairs, some bathroom rehab. $5-6k estimate."},{"ts":"May 30 9:02 PM","txt":"moved to phase 2 because we may end up getting a new trailer into American for $12k all in (purchase, rehab, delivery, hookup)"}],"handyman":"Y","handyman_rehab":6000},{"id":"R-22","park":"Redwood","pad":"22","type":"toh","lane":"tohs","cur_lot_rent":400,"cur_poh_rent":null,"pro_lot_rent":400,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":null,"decision":"leave as-is","eviction":null,"status":"occupied","extraComments":[]},{"id":"R-23","park":"Redwood","pad":"23","type":"toh","lane":"tohs","cur_lot_rent":400,"cur_poh_rent":null,"pro_lot_rent":500,"pro_poh_rent":400,"rehab_estimate":12000,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":"Struggling payment wise. May get evicted. Behind on utilities.","decision":"leave as-is","eviction":"Y","status":"occupied","extraComments":[{"ts":"Jun 20 10:15 PM","txt":"Eviction is filed june 8. supposed to move out by mid july."},{"ts":"May 30 9:09 PM","txt":"Filing for eviction June 1.  Utilities are getting cutoff so we might be able to get this."}],"handyman_rehab":null,"handyman":null},{"id":"R-24","park":"Redwood","pad":"24","type":"poh","lane":"leased-pohs","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":450,"pro_poh_rent":500,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":"Angel/Jonathan","decision":"leave as-is","eviction":null,"status":"occupied","extraComments":[]},{"id":"R-25","park":"Redwood","pad":"25","type":"toh","lane":"tohs","cur_lot_rent":400,"cur_poh_rent":null,"pro_lot_rent":450,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":"Selling to someone else. Raise to 450/month jan 2027","decision":"leave as-is","eviction":null,"status":"occupied","extraComments":[]},{"id":"R-26","park":"Redwood","pad":"26","type":"poh","lane":"leased-pohs","cur_lot_rent":450,"cur_poh_rent":450,"pro_lot_rent":500,"pro_poh_rent":500,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":"may have to move and get new tenant in","decision":"leave as-is","eviction":null,"status":"occupied","extraComments":[{"ts":"Jun 20 10:28 PM","txt":"tenant fine for now"}],"handyman_rehab":null,"handyman":null},{"id":"R-27","park":"Redwood","pad":"27","type":"poh","lane":"leased-pohs","cur_lot_rent":500,"cur_poh_rent":400,"pro_lot_rent":500,"pro_poh_rent":250,"rehab_estimate":8000,"spent_to_date":8000,"spent_next_2wk":null,"phase":"1","vendor":"jason coons","comments":"rehab complete, in process of lease sign and tenant moving in","decision":"Handyman-Special","eviction":"Y","status":"vacant","extraComments":[{"ts":"Jun 20 10:26 PM","txt":"tenant lost job, will likely move out. May have to file eviction week of 6/22."}],"handyman_rehab":null,"handyman":null},{"id":"R-28","park":"Redwood","pad":"28","type":"toh","lane":"demo-p2","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":null,"pro_poh_rent":null,"rehab_estimate":3550,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":null,"comments":null,"decision":"demo","eviction":null,"status":"vacant","extraComments":[]},{"id":"R-29","park":"Redwood","pad":"29","type":"toh","lane":"phase2-rehab","cur_lot_rent":null,"cur_poh_rent":null,"pro_lot_rent":450,"pro_poh_rent":450,"rehab_estimate":15000,"spent_to_date":null,"spent_next_2wk":null,"phase":"2","vendor":null,"comments":"maybe move to phase 1 if we need more rent for LOC","decision":"rehab","eviction":null,"status":"vacant","extraComments":[]},{"id":"R-30","park":"Redwood","pad":"30","type":"poh","lane":"leased-pohs","cur_lot_rent":500,"cur_poh_rent":250,"pro_lot_rent":500,"pro_poh_rent":400,"rehab_estimate":1000,"spent_to_date":1000,"spent_next_2wk":null,"phase":"1","vendor":"George (electrician)","comments":"after eviction: fumigate, carpet, paint. ~$4k additional","decision":"rehab","eviction":"Y","status":"occupied","extraComments":[{"ts":"Jun 20 10:16 PM","txt":"Moving out, out by end of june."}],"handyman_rehab":null,"handyman":null},{"id":"R-31","park":"Redwood","pad":"31","type":"toh","lane":"tohs","cur_lot_rent":400,"cur_poh_rent":null,"pro_lot_rent":425,"pro_poh_rent":null,"rehab_estimate":null,"spent_to_date":null,"spent_next_2wk":null,"phase":null,"vendor":null,"comments":"Fix roof. Don't have title, may be POH. Might rehab in phase 2.","decision":"leave as-is","eviction":"Y","status":"occupied","extraComments":[{"ts":"Jun 20 10:25 PM","txt":"Keep on eviction tag, if we get check from trustee from her, we can take off eviction list"},{"ts":"Jun 20 10:24 PM","txt":"Went to treasurer/trustee. Got checks (2k) from her. Shes on the bubble."},{"ts":"May 30 9:10 PM","txt":"May have to evict. Going to trustee this week for help with rent. also theres a racoon problem."}],"handyman_rehab":null,"handyman":null}];
+
+let td={},lo={},tc=200,selId=null;
+const $=s=>document.querySelector(s);
+const f$=v=>v?'$'+Math.round(v).toLocaleString():null;
+const ts=()=>{const d=new Date();return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});};
+
+let migrated=false;
+let uptickPhases='12'; // '1', '2', or '12'
+const NOIK='mhp-v2-noi';
+let noiOpex=0;      // monthly operating expenses (user-entered)
+let noiCap=9;       // cap rate %, default 9
+let noiRentKey='current'; // which rent scenario feeds NOI
+function loadNOI(){try{const r=localStorage.getItem(NOIK);if(r){const o=JSON.parse(r);if(typeof o.opex==='number')noiOpex=o.opex;if(typeof o.cap==='number')noiCap=o.cap;if(o.rentKey)noiRentKey=o.rentKey;}}catch(e){}}
+function saveNOI(){try{localStorage.setItem(NOIK,JSON.stringify({opex:noiOpex,cap:noiCap,rentKey:noiRentKey}));}catch(e){}queuePush();}
+function migrateLane(r){
+  // self-heal tiles saved under lanes that no longer exist
+  let lid=r.lane;
+  if(lid==='demo'){ // old single demo lane -> split by phase
+    lid=String(r.phase||'')==='2'?'demo-p2':'demo-p1';
+    if(!r.phase)r.phase='1';
+    r.lane=lid;migrated=true;
+  }
+  if(!LM[lid]){ // any other unknown lane
+    if((r.decision||'').toLowerCase().includes('demo')){lid=String(r.phase||'')==='2'?'demo-p2':'demo-p1';}
+    else lid='vacant-pads';
+    r.lane=lid;migrated=true;
+  }
+  return lid;
+}
+
+function isEmptyStray(r){
+  // auto-generated placeholder with no meaningful data entered
+  if(!/^NEW-/i.test(r.id))return false;
+  const hasData=r.park||r.type||r.cur_lot_rent||r.cur_poh_rent||r.pro_lot_rent||r.pro_poh_rent||
+    r.rehab_estimate||r.spent_to_date||r.spent_next_2wk||r.vendor||r.comments||
+    (r.extraComments&&r.extraComments.length);
+  return !hasData;
+}
+
+function build(arr){
+  td={};lo={};LANES.forEach(l=>lo[l.id]=[]);
+  arr.forEach(r=>{
+    if(isEmptyStray(r)){migrated=true;return;} // drop empty placeholder tiles
+    td[r.id]={...r,extraComments:r.extraComments||[]};
+    const lid=migrateLane(td[r.id]);lo[lid].push(r.id);
+  });
+}
+
+function setInd(s){const el=$('#save-ind');if(!el)return;const m={syncing:['Syncing...','syncing'],saving:['Saving...',''],saved:['✓ Saved','saved']};const[t,c]=m[s]||['',''];el.textContent=t;el.className='save-ind'+(c?' '+c:'');}
+
+function save(){
+  setInd('saving');
+  try{localStorage.setItem(SK,JSON.stringify(Object.values(td)));setInd('saved');}
+  catch(e){setInd('saved');}
+  queuePush();
+}
+
+function loadSaved(){
+  try{const r=localStorage.getItem(SK);if(r){build(JSON.parse(r));return true;}}catch(e){}
+  return false;
+}
+
+function sel(id){
+  selId=id;
+  document.querySelectorAll('.tile').forEach(e=>e.classList.remove('selected'));
+  document.querySelector(`[data-id="${id}"]`)?.classList.add('selected');
+  document.querySelectorAll('.lane').forEach(e=>{if(e.dataset.lane!==td[id].lane)e.classList.add('drop-target');});
+  $('#banner').textContent=`"${id}" selected — tap any highlighted column to move it there, or tap the tile again to cancel`;
+  $('#banner').classList.add('active');
+}
+
+function clearSel(){
+  selId=null;
+  document.querySelectorAll('.tile').forEach(e=>e.classList.remove('selected'));
+  document.querySelectorAll('.lane').forEach(e=>e.classList.remove('drop-target'));
+  $('#banner').classList.remove('active');
+}
+
+function phaseForLane(lid){
+  if(lid==='phase1-rehab'||lid==='demo-p1')return '1';
+  if(lid==='phase2-rehab'||lid==='demo-p2')return '2';
+  return null; // other lanes leave phase untouched
+}
+
+function moveTo(lid){
+  if(!selId)return;
+  const id=selId,from=td[id].lane;
+  if(from===lid){clearSel();return;}
+  lo[from]=lo[from].filter(x=>x!==id);
+  lo[lid]=[...lo[lid],id];
+  td[id].lane=lid;
+  const fp=phaseForLane(lid);if(fp)td[id].phase=fp;
+  clearSel();save();render();
+}
+
+function sums(lid){return(lo[lid]||[]).reduce((a,id)=>({lot:a.lot+(td[id]?.cur_lot_rent||0),poh:a.poh+(td[id]?.cur_poh_rent||0)}),{lot:0,poh:0});}
+
+function render(){
+  const c=$('#cols');c.innerHTML='';
+  LANES.forEach(lane=>{
+    let extra='';
+    {const{lot,poh}=sums(lane.id);
+     if(lot||poh){
+       const parts=[];
+       if(lot)parts.push(`<span>Lot: <strong>${f$(lot)}</strong></span>`);
+       if(poh)parts.push(`<span>POH: <strong>${f$(poh)}</strong></span>`);
+       extra=`<span class="lane-sum" style="color:${lane.tx}">${parts.join('')}</span>`;
+     }}
+    const ids=lo[lane.id]||[];
+    const col=document.createElement('div');col.className='lane';col.dataset.lane=lane.id;
+    col.innerHTML=`<div class="lane-hdr" style="background:${lane.bg}"><span class="lane-title" style="color:${lane.tx}">${lane.label}</span><span class="lane-count" style="color:${lane.tx}">${ids.length}</span>${extra}</div><div class="lane-body"></div>`;
+    col.addEventListener('click',e=>{if(selId&&!e.target.closest('.tile')&&!e.target.closest('.add-btn'))moveTo(lane.id);});
+    c.appendChild(col);
+    const body=col.querySelector('.lane-body');
+    ids.forEach(id=>{
+      const t=td[id],el=document.createElement('div');
+      el.className='tile';el.dataset.id=id;
+      el.style.background=lane.bg;el.style.borderColor=lane.bd;
+      const rl=t.cur_lot_rent?`$${Math.round(t.cur_lot_rent)}${t.cur_poh_rent?'+$'+Math.round(t.cur_poh_rent):''}`:t.pro_lot_rent?`→$${Math.round(t.pro_lot_rent)}${t.pro_poh_rent?'+$'+Math.round(t.pro_poh_rent):''}`:null;
+      const k=v=>v>=1000?(v/1000).toFixed(v%1000?1:0)+'k':v;
+      const showRehab=(lane.id!=='leased-pohs'&&lane.id!=='tohs')&&((t.rehab_estimate||0)||(t.spent_to_date||0)||(t.spent_next_2wk||0));
+      let rh=null;
+      if(showRehab){const est=t.rehab_estimate||0,sp=t.spent_to_date||0;rh=sp>0?`$${k(sp)} / $${k(est)}`:`est $${k(est)}`;}
+      el.innerHTML=`${t.eviction?'<div class="evict-dot"></div>':''}${t.handyman?'<div class="handy-dot"></div>':''}<span class="tile-id" style="color:${lane.tx}">${id}</span><span class="tile-type" style="color:${lane.tx}">${t.type||'pad'}</span>${rl?`<span class="tile-rent" style="color:${lane.tx}">${rl}</span>`:''}${rh?`<span class="tile-rehab" style="color:${lane.tx}">🔧 ${rh}</span>`:''}`;
+      el.addEventListener('click',e=>{e.stopPropagation();if(selId===id){clearSel();return;}if(selId){moveTo(lane.id);return;}sel(id);});
+      let ht;el.addEventListener('pointerdown',()=>{ht=setTimeout(()=>{clearSel();openModal(id);},500);});
+      el.addEventListener('pointerup',()=>clearTimeout(ht));el.addEventListener('pointerleave',()=>clearTimeout(ht));
+      body.appendChild(el);
+    });
+    const ab=document.createElement('button');ab.className='add-btn';ab.textContent='+';
+    ab.addEventListener('click',e=>{e.stopPropagation();addTile(lane.id);});
+    body.appendChild(ab);
+  });
+  renderTotals();
+  renderRentBar();
+  renderNOI();
+  renderPossibleRent();
+  renderUptick();
+  renderRehabSum();
+}
+
+function renderRehabSum(){
+  const all=Object.values(td);
+  const REHAB=new Set(['phase1-rehab','phase2-rehab','in-rehab','rehab-complete']);
+  const agg=f=>{const u=all.filter(f);const b=u.reduce((s,x)=>s+(x.rehab_estimate||0),0);const sp=u.reduce((s,x)=>s+(x.spent_to_date||0),0);return{b,sp,r:b-sp};};
+  const ph=x=>String(x.phase||'');
+  const DEMO=new Set(['demo-p1','demo-p2']);
+  const groups=[
+    {cls:'p1r',label:'Phase 1 Rehab',d:agg(x=>!DEMO.has(x.lane)&&ph(x)==='1')},
+    {cls:'p2r',label:'Phase 2 Rehab',d:agg(x=>!DEMO.has(x.lane)&&ph(x)==='2')},
+    {cls:'p1d',label:'Phase 1 Demo', d:agg(x=>x.lane==='demo-p1')},
+    {cls:'p2d',label:'Phase 2 Demo', d:agg(x=>x.lane==='demo-p2')},
+  ];
+  $('#rehabsum').innerHTML=groups.map(g=>
+    `<div class="rs ${g.cls}"><div class="rs-h">${g.label}</div>`+
+    `<div class="rs-row"><span class="rs-k">Budgeted</span><span class="rs-v">${f$(g.d.b)||'$0'}</span></div>`+
+    `<div class="rs-row"><span class="rs-k">Spent</span><span class="rs-v">${f$(g.d.sp)||'$0'}</span></div>`+
+    `<div class="rs-row"><span class="rs-k">Remaining</span><span class="rs-v rem">${f$(g.d.r)||'$0'}</span></div></div>`
+  ).join('');
+}
+
+function rentBarHTML(units){
+  const lotOf=u=>u.cur_lot_rent||0, pohOf=u=>u.cur_poh_rent||0;
+  const tohLot=units.filter(u=>u.type==='toh').reduce((s,u)=>s+lotOf(u),0);
+  const pohRent=units.reduce((s,u)=>s+pohOf(u),0);
+  const allLot=units.reduce((s,u)=>s+lotOf(u),0);
+  const combined=allLot+pohRent;
+  const amLot=units.filter(u=>u.park==='American').reduce((s,u)=>s+lotOf(u)+pohOf(u),0);
+  const rwLot=combined-amLot;
+  return `<div class="rb"><div class="rb-l">TOH Lot Rent</div><div class="rb-v">${tohLot?f$(tohLot):'—'}</div><div class="rb-sub">tenant-owned, lot only</div></div>`+
+    `<div class="rb"><div class="rb-l">POH Rent</div><div class="rb-v">${pohRent?f$(pohRent):'—'}</div><div class="rb-sub">home-rent portion</div></div>`+
+    `<div class="rb"><div class="rb-l">All Lot Rent</div><div class="rb-v">${allLot?f$(allLot):'—'}</div><div class="rb-sub">every pad, both parks</div></div>`+
+    `<div class="rb combined"><div class="rb-l">Combined Monthly</div><div class="rb-v">${combined?f$(combined):'—'}</div><div class="rb-sub">American ${f$(amLot)||'$0'} · Redwood ${f$(rwLot)||'$0'}</div></div>`;
+}
+
+function renderRentBar(){
+  const all=Object.values(td);
+  $('#rentbar').innerHTML=rentBarHTML(all);
+  const noEv=all.filter(u=>!u.eviction);
+  const lbl=$('#rentbar-noev-lbl');
+  if(noEv.length<all.length){
+    $('#rentbar-noev').innerHTML=rentBarHTML(noEv);
+    $('#rentbar-noev').style.display='';
+    if(lbl)lbl.style.display='';
+  }else{
+    $('#rentbar-noev').innerHTML='';
+    $('#rentbar-noev').style.display='none';
+    if(lbl)lbl.style.display='none';
+  }
+}
+
+function renderPossibleRent(){
+  const COLS=new Set(['vacant-tohs','phase1-rehab','phase2-rehab','in-rehab','rehab-complete','leased-pohs','tohs']);
+  const lotP=u=>u.pro_lot_rent||u.cur_lot_rent||0;
+  const pohP=u=>u.pro_poh_rent||u.cur_poh_rent||0;
+  const units=Object.values(td).filter(u=>COLS.has(u.lane));
+  const tohLot=units.filter(u=>u.type==='toh').reduce((s,u)=>s+lotP(u),0);
+  const pohRent=units.reduce((s,u)=>s+pohP(u),0);
+  const allLot=units.reduce((s,u)=>s+lotP(u),0);
+  const combined=allLot+pohRent;
+  const amLot=units.filter(u=>u.park==='American').reduce((s,u)=>s+lotP(u)+pohP(u),0);
+  const rwLot=combined-amLot;
+  $('#rentbar-possible').innerHTML=
+    `<div class="rb"><div class="rb-l">TOH Lot Rent</div><div class="rb-v">${tohLot?f$(tohLot):'—'}</div><div class="rb-sub">tenant-owned, lot only</div></div>`+
+    `<div class="rb"><div class="rb-l">POH Rent</div><div class="rb-v">${pohRent?f$(pohRent):'—'}</div><div class="rb-sub">home-rent portion</div></div>`+
+    `<div class="rb"><div class="rb-l">All Lot Rent</div><div class="rb-v">${allLot?f$(allLot):'—'}</div><div class="rb-sub">every qualifying pad</div></div>`+
+    `<div class="rb combined"><div class="rb-l">Combined Monthly</div><div class="rb-v">${combined?f$(combined):'—'}</div><div class="rb-sub">American ${f$(amLot)||'$0'} · Redwood ${f$(rwLot)||'$0'}</div></div>`;
+}
+
+function renderUptick(){
+  const REHAB=new Set(['phase1-rehab','phase2-rehab','in-rehab','rehab-complete']);
+  const phs=uptickPhases==='12'?new Set(['1','2']):new Set([uptickPhases]);
+  const all=Object.values(td);
+  // current base per category
+  let bTohLot=all.filter(u=>u.type==='toh').reduce((s,u)=>s+(u.cur_lot_rent||0),0);
+  let bPoh=all.reduce((s,u)=>s+(u.cur_poh_rent||0),0);
+  let bLot=all.reduce((s,u)=>s+(u.cur_lot_rent||0),0);
+  let bAm=all.filter(u=>u.park==='American').reduce((s,u)=>s+(u.cur_lot_rent||0)+(u.cur_poh_rent||0),0);
+  // uptick deltas per category
+  let dTohLot=0,dPoh=0,dLot=0,dAm=0;
+  all.forEach(u=>{
+    if(!REHAB.has(u.lane)||!phs.has(String(u.phase||'')))return;
+    const pl=u.pro_lot_rent||u.cur_lot_rent||0, pp=u.pro_poh_rent||u.cur_poh_rent||0;
+    const dl=Math.max(0,pl-(u.cur_lot_rent||0)), dp=Math.max(0,pp-(u.cur_poh_rent||0));
+    dLot+=dl; dPoh+=dp;
+    if(u.type==='toh')dTohLot+=dl;
+    if(u.park==='American')dAm+=dl+dp;
+  });
+  const bComb=bLot+bPoh, dComb=dLot+dPoh;
+  const tohLot=bTohLot+dTohLot, poh=bPoh+dPoh, lot=bLot+dLot, combined=bComb+dComb;
+  const amComb=bAm+dAm, rwComb=combined-amComb;
+  const brk=(base,delta)=>`<div class="rb-brk">${f$(base)||'$0'} <span class="rb-up">+ ${f$(delta)||'$0'}</span></div>`;
+  $('#rentbar-uptick').innerHTML=
+    `<div class="rb"><div class="rb-l">TOH Lot Rent</div><div class="rb-v">${tohLot?f$(tohLot):'—'}</div>${brk(bTohLot,dTohLot)}</div>`+
+    `<div class="rb"><div class="rb-l">POH Rent</div><div class="rb-v">${poh?f$(poh):'—'}</div>${brk(bPoh,dPoh)}</div>`+
+    `<div class="rb"><div class="rb-l">All Lot Rent</div><div class="rb-v">${lot?f$(lot):'—'}</div>${brk(bLot,dLot)}</div>`+
+    `<div class="rb combined"><div class="rb-l">Combined Monthly</div><div class="rb-v">${combined?f$(combined):'—'}</div>${brk(bComb,dComb)}</div>`;
+}
+
+function rentScenarios(){
+  const all=Object.values(td);
+  const REHAB=new Set(['phase1-rehab','phase2-rehab','in-rehab','rehab-complete']);
+  const comb=units=>units.reduce((s,u)=>s+(u.cur_lot_rent||0)+(u.cur_poh_rent||0),0);
+  const current=comb(all);
+  const noEvict=comb(all.filter(u=>!u.eviction));
+  const uptick=phs=>{let b=current;all.forEach(u=>{if(REHAB.has(u.lane)&&phs.has(String(u.phase||''))){const pl=u.pro_lot_rent||u.cur_lot_rent||0,pp=u.pro_poh_rent||u.cur_poh_rent||0;b+=Math.max(0,pl-(u.cur_lot_rent||0))+Math.max(0,pp-(u.cur_poh_rent||0));}});return b;};
+  const POSS=new Set(['vacant-tohs','phase1-rehab','phase2-rehab','in-rehab','rehab-complete','leased-pohs','tohs']);
+  const possible=all.filter(u=>POSS.has(u.lane)).reduce((s,u)=>s+(u.pro_lot_rent||u.cur_lot_rent||0)+(u.pro_poh_rent||u.cur_poh_rent||0),0);
+  return {
+    current:{label:'Current collected',value:current},
+    noevict:{label:'Excluding eviction-flagged',value:noEvict},
+    uptick1:{label:'Rehab uptick — Phase 1',value:uptick(new Set(['1']))},
+    uptick2:{label:'Rehab uptick — Phase 2',value:uptick(new Set(['2']))},
+    uptick12:{label:'Rehab uptick — Phases 1 & 2',value:uptick(new Set(['1','2']))},
+    possible:{label:'All possible (prospective)',value:possible},
+  };
+}
+
+function renderNOI(){
+  const sc=rentScenarios();
+  if(!sc[noiRentKey])noiRentKey='current';
+  const rent=sc[noiRentKey].value;
+  const noi=rent-noiOpex;
+  const annual=noi*12;
+  const capDec=(noiCap||0)/100;
+  const val=capDec>0?annual/capDec:0;
+  const money=n=>{const neg=n<0;const a=Math.abs(Math.round(n));return (neg?'-$':'$')+a.toLocaleString();};
+  const opts=Object.entries(sc).map(([k,o])=>`<option value="${k}"${k===noiRentKey?' selected':''}>${o.label} — ${money(o.value)}</option>`).join('');
+  $('#noibar').innerHTML=
+    `<div class="noi"><div class="noi-l">Monthly Rent</div><div class="noi-v">${money(rent)}</div><select class="noi-rent-select" id="noi-rent">${opts}</select></div>`+
+    `<div class="noi"><div class="noi-l">Operating Expenses</div><input class="noi-input" id="noi-opex" type="text" inputmode="decimal" value="${noiOpex?noiOpex.toLocaleString():''}" placeholder="enter monthly $"><div class="noi-sub">monthly, from Rent Manager</div></div>`+
+    `<div class="noi"><div class="noi-l">Monthly NOI</div><div class="noi-v">${money(noi)}</div><div class="noi-sub">rent − expenses</div></div>`+
+    `<div class="noi"><div class="noi-l">Annual NOI</div><div class="noi-v">${money(annual)}</div><div class="noi-sub">monthly × 12</div></div>`+
+    `<div class="noi val"><div class="noi-l">Valuation</div><div class="noi-v">${money(val)}</div><div class="noi-caprow"><span class="noi-sub">@ cap</span><input class="noi-cap-input" id="noi-cap" type="text" inputmode="decimal" value="${noiCap}"><span class="noi-sub">%</span></div></div>`;
+  const rs=$('#noi-rent');
+  if(rs)rs.addEventListener('change',e=>{noiRentKey=e.target.value;saveNOI();renderNOI();});
+  const oi=$('#noi-opex');
+  if(oi)oi.addEventListener('change',e=>{const v=parseFloat(e.target.value.replace(/[^0-9.\-]/g,''));noiOpex=isNaN(v)?0:v;saveNOI();renderNOI();});
+  const ci=$('#noi-cap');
+  if(ci)ci.addEventListener('change',e=>{const v=parseFloat(e.target.value.replace(/[^0-9.\-]/g,''));noiCap=isNaN(v)?0:v;saveNOI();renderNOI();});
+}
+
+function renderTotals(){
+  const el=$('#totals'),all=Object.values(lo).flat();
+  const sp=all.reduce((s,id)=>s+(td[id]?.spent_to_date||0),0);
+  const n2=all.reduce((s,id)=>s+(td[id]?.spent_next_2wk||0),0);
+  const est=all.reduce((s,id)=>s+(td[id]?.rehab_estimate||0),0);
+  el.innerHTML=`<div class="tot"><div class="tot-l">Total units</div><div class="tot-v">${all.length}</div></div><div class="tot"><div class="tot-l">Rehab estimate</div><div class="tot-v" style="color:#5E3200">${f$(est)||'—'}</div></div><div class="tot"><div class="tot-l">Spent to date</div><div class="tot-v" style="color:#6B1840">${f$(sp)||'—'}</div></div><div class="tot"><div class="tot-l">Next 2 weeks</div><div class="tot-v" style="color:#3D2000">${f$(n2)||'—'}</div></div><div class="tot"><div class="tot-l">Demo · Complete</div><div class="tot-v"><span style="color:#6B1A1A">${((lo['demo-p1']||[]).length)+((lo['demo-p2']||[]).length)}</span> · <span style="color:#1A5020">${(lo['rehab-complete']||[]).length}</span></div></div>`;
+}
+
+function openModal(id){
+  const t=td[id],L=LM[t.lane]||LANES[0];
+  const bp=t.rehab_estimate>0?Math.min(100,Math.round((t.spent_to_date||0)/t.rehab_estimate*100)):0;
+  const allC=[...(t.comments?[{ts:'Spreadsheet',txt:t.comments}]:[]),...(t.extraComments||[])];
+  const cHTML=allC.length?allC.map(c=>`<div class="citem"><div class="cmeta">${c.ts}</div><div class="ctxt">${c.txt.replace(/</g,'&lt;')}</div></div>`).join(''):`<p class="no-c">No comments yet.</p>`;
+  const lO=LANES.map(l=>`<option value="${l.id}"${l.id===t.lane?' selected':''}>${l.label}</option>`).join('');
+  const pb=t.park==='American'?'<span class="badge badge-a">American</span>':'<span class="badge badge-r">Redwood</span>';
+  const nf=(fid,lbl,val)=>`<div class="fl"><span class="flbl">${lbl}</span><input class="finput" id="${fid}" type="number" value="${val!=null?val:''}" placeholder="—"></div>`;
+  const overlay=document.createElement('div');overlay.className='overlay';
+  overlay.innerHTML=`<div class="modal"><div class="modal-top"><div><div class="modal-title">${id}${pb}</div><div class="modal-sub">${t.type||'pad'} · ${t.status} · ${t.decision||'—'}</div></div><button class="xbtn" id="xbtn">✕</button></div><div class="grid2"><div class="sec">Rents</div>${nf('f-cl','Current lot rent',t.cur_lot_rent)}${nf('f-cp','Current POH rent',t.cur_poh_rent)}${nf('f-pl','Prospective lot rent',t.pro_lot_rent)}${nf('f-pp','Prospective POH rent',t.pro_poh_rent)}<div class="sec">Rehab budget</div>${nf('f-est','Rehab estimate',t.rehab_estimate)}${nf('f-hmr','HandyMan Special Rehab',t.handyman_rehab)}<div class="fl"><span class="flbl">Phase</span><input class="finput" id="f-ph" type="text" value="${t.phase||''}" placeholder="—"></div>${nf('f-sp','Spent to date',t.spent_to_date)}${nf('f-n2','$ next 2 weeks',t.spent_next_2wk)}<div class="fl full"><span class="flbl">Budget used — <span id="bpct-lbl">${bp}%</span></span><div class="bbar-bg"><div id="bbar" class="bbar-fill" style="width:${bp}%;background:${L.bd}"></div></div></div><div class="fl"><span class="flbl">Vendor / GC</span><input class="finput" id="f-vd" type="text" value="${t.vendor||''}" placeholder="—"></div><div class="fl"><span class="flbl">Move to lane</span><select class="finput" id="f-ln">${lO}</select></div><div class="fl full"><label class="evict-toggle"><input type="checkbox" id="f-ev"${t.eviction?' checked':''}><span class="evict-dot-lg"></span>Eviction flag (red dot)</label></div><div class="fl full"><label class="handy-toggle"><input type="checkbox" id="f-hm"${t.handyman?' checked':''}><span class="handy-dot-lg"></span>Handy Man Special (yellow dot)</label></div></div><div class="sec" style="margin-top:.25rem">Comments</div><div class="clist" id="clist">${cHTML}</div><textarea class="finput" id="f-cm" placeholder="Add a comment…"></textarea><div class="btn-row"><button class="btn danger" id="dbtn">Delete tile</button><button class="btn" id="xbtn2">Cancel</button><button class="btn pri" id="sbtn">Save changes</button></div></div>`;
+  document.body.appendChild(overlay);
+  ['#f-est','#f-sp'].forEach(s=>{const el=overlay.querySelector(s);if(el)el.addEventListener('input',()=>{const e=parseFloat(overlay.querySelector('#f-est').value)||0,s=parseFloat(overlay.querySelector('#f-sp').value)||0,p=e>0?Math.min(100,Math.round(s/e*100)):0;const b=overlay.querySelector('#bbar'),l=overlay.querySelector('#bpct-lbl');if(b)b.style.width=p+'%';if(l)l.textContent=p+'%';});});
+  const close=()=>overlay.remove();
+  overlay.querySelector('#xbtn').onclick=close;overlay.querySelector('#xbtn2').onclick=close;
+  overlay.querySelector('#dbtn').onclick=()=>{
+    let ok=true;
+    try{ok=confirm('Delete tile "'+id+'"? This removes it permanently.');}catch(e){ok=true;}
+    if(!ok)return;
+    lo[t.lane]=(lo[t.lane]||[]).filter(x=>x!==id);
+    delete td[id];
+    save();close();render();
+  };
+  overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
+  overlay.querySelector('#sbtn').onclick=()=>{
+    const n=fid=>{const x=parseFloat(overlay.querySelector(fid)?.value);return isNaN(x)?null:x;};
+    const s=fid=>overlay.querySelector(fid)?.value.trim()||null;
+    t.cur_lot_rent=n('#f-cl');t.cur_poh_rent=n('#f-cp');t.pro_lot_rent=n('#f-pl');t.pro_poh_rent=n('#f-pp');
+    t.rehab_estimate=n('#f-est');t.spent_to_date=n('#f-sp');t.spent_next_2wk=n('#f-n2');
+    t.handyman_rehab=n('#f-hmr');
+    t.phase=s('#f-ph');t.vendor=s('#f-vd');
+    t.eviction=overlay.querySelector('#f-ev')?.checked?'Y':null;
+    t.handyman=overlay.querySelector('#f-hm')?.checked?'Y':null;
+    const nl=overlay.querySelector('#f-ln').value;
+    if(nl!==t.lane){lo[t.lane]=lo[t.lane].filter(x=>x!==id);lo[nl]=[...lo[nl],id];t.lane=nl;const fp=phaseForLane(nl);if(fp)t.phase=fp;}
+    const ct=overlay.querySelector('#f-cm')?.value.trim();if(ct)t.extraComments.unshift({ts:ts(),txt:ct});
+    save();close();render();
+  };
+}
+
+function addTile(lid){
+  const id='NEW-'+(tc++);
+  td[id]={id,park:'',pad:id,type:'',status:'vacant',lane:lid,cur_lot_rent:null,cur_poh_rent:null,pro_lot_rent:null,pro_poh_rent:null,rehab_estimate:null,spent_to_date:null,spent_next_2wk:null,phase:null,vendor:null,comments:null,decision:null,eviction:null,extraComments:[]};
+  lo[lid].push(id);save();render();openModal(id);
+}
+
+$('#reset-btn').addEventListener('click',()=>{
+  if(!confirm('Reset all tiles to original spreadsheet data? This cannot be undone.'))return;
+  build(DD.map(r=>({...r,extraComments:[]})));save();render();
+});
+
+// --- Export: download current state as a JSON file ---
+$('#export-btn').addEventListener('click',()=>{
+  const payload={app:'muncie-mhp',version:2,exportedAt:new Date().toISOString(),units:Object.values(td)};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const d=new Date();
+  const stamp=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'_'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
+  const a=document.createElement('a');a.href=url;a.download='muncie_mhp_state_'+stamp+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const ind=$('#save-ind');ind.textContent='⬇ Exported';ind.className='save-ind saved';
+  setTimeout(()=>setInd('saved'),2000);
+});
+
+// --- Import: load a previously exported JSON file ---
+$('#import-btn').addEventListener('click',()=>$('#import-file').click());
+$('#import-file').addEventListener('change',e=>{
+  const file=e.target.files&&e.target.files[0];if(!file)return;
+  const rdr=new FileReader();
+  rdr.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      const units=Array.isArray(data)?data:data.units;
+      if(!Array.isArray(units)||!units.length||!units[0].id)throw new Error('Unrecognized file');
+      if(!confirm('Import '+units.length+' units? This replaces the current state on THIS laptop.'))return;
+      build(units.map(r=>({...r,extraComments:r.extraComments||[]})));
+      save();render();
+      const ind=$('#save-ind');ind.textContent='⬆ Imported';ind.className='save-ind saved';
+      setTimeout(()=>setInd('saved'),2000);
+    }catch(err){alert('Could not import this file. Make sure it is a state file exported from this dashboard.\n\n('+err.message+')');}
+    finally{e.target.value='';}
+  };
+  rdr.readAsText(file);
+});
+
+// Phase toggle for rehab rent uptick
+document.querySelectorAll('#phase-toggle button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    uptickPhases=b.dataset.ph;
+    document.querySelectorAll('#phase-toggle button').forEach(x=>x.classList.toggle('active',x===b));
+    renderUptick();
+  });
+});
+
+// Boot
+loadNOI();
+if(!loadSaved())build(DD.map(r=>({...r,extraComments:[]})));
+render();
+if(migrated)save();
+setInd('saved');
+
+// Cloud sync: pull shared state on load (Gist wins if present)
+(async function cloudBoot(){
+  if(!SYNC_ON()){setSync('off');return;}
+  setSync('syncing');
+  const remote=await gistPull();
+  if(remote&&Array.isArray(remote.units)&&remote.units.length){
+    build(remote.units.map(r=>({...r,extraComments:r.extraComments||[]})));
+    if(remote.noi){
+      if(typeof remote.noi.opex==='number')noiOpex=remote.noi.opex;
+      if(typeof remote.noi.cap==='number')noiCap=remote.noi.cap;
+      if(remote.noi.rentKey)noiRentKey=remote.noi.rentKey;
+    }
+    try{localStorage.setItem(SK,JSON.stringify(Object.values(td)));}catch(e){}
+    render();
+    setSync('ok');
+  }else{
+    // gist empty or unreachable — push our current state up as the starting point
+    setSync('ok');gistPush();
+  }
+})();
+</script>
+</body>
+</html>
