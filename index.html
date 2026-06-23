@@ -164,6 +164,7 @@ select.finput{cursor:pointer}
     <span class="sync-ind" id="sync-ind" style="display:none"></span>
     <button class="btn-sm" id="export-btn">⬇ Export</button>
     <button class="btn-sm" id="import-btn">⬆ Import</button>
+    <button class="btn-sm" id="sync-setup-btn">☁ Sync setup</button>
     <button class="btn-sm" id="reset-btn">Reset to original</button>
     <input type="file" id="import-file" accept="application/json,.json" style="display:none">
   </div>
@@ -203,10 +204,51 @@ const SK='mhp-v2';
    GIST_TOKEN : your GitHub fine-grained token (Gists: read+write)
    GIST_ID    : the ID from your secret gist's URL
    ============================================================ */
-const GIST_TOKEN = "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";
-const GIST_ID    = "047c5c427d1543037cedbce31efa178b";
 const GIST_FILE  = "mhp-data.json";
+const CREDK = "mhp-v2-cred";
+let GIST_TOKEN = "";
+let GIST_ID    = "";
+function loadCreds(){
+  try{const r=localStorage.getItem(CREDK);if(r){const o=JSON.parse(r);GIST_TOKEN=o.token||"";GIST_ID=o.gid||"";}}catch(e){}
+}
+function saveCreds(token,gid){
+  GIST_TOKEN=token||"";GIST_ID=gid||"";
+  try{localStorage.setItem(CREDK,JSON.stringify({token:GIST_TOKEN,gid:GIST_ID}));}catch(e){}
+}
+function clearCreds(){
+  GIST_TOKEN="";GIST_ID="";
+  try{localStorage.removeItem(CREDK);}catch(e){}
+}
 const SYNC_ON = ()=>GIST_TOKEN.length>10 && GIST_ID.length>5;
+
+// First-time / settings prompt for cloud sync credentials
+function promptCreds(force){
+  if(SYNC_ON()&&!force)return;
+  const curTok=GIST_TOKEN, curId=GIST_ID;
+  const t=window.prompt('Cloud sync — paste your GitHub token (leave blank to skip sync on this device):', curTok||'');
+  if(t===null)return; // cancelled
+  const g=window.prompt('Cloud sync — paste your Gist ID:', curId||'047c5c427d1543037cedbce31efa178b');
+  if(g===null)return;
+  if(t.trim().length>10&&g.trim().length>5){
+    saveCreds(t.trim(),g.trim());
+    setSync('syncing');
+    cloudResync();
+  }else{
+    clearCreds();setSync('off');
+  }
+}
+
+async function cloudResync(){
+  const remote=await gistPull();
+  if(remote&&Array.isArray(remote.units)&&remote.units.length){
+    build(remote.units.map(r=>({...r,extraComments:r.extraComments||[]})));
+    if(remote.noi){if(typeof remote.noi.opex==='number')noiOpex=remote.noi.opex;if(typeof remote.noi.cap==='number')noiCap=remote.noi.cap;if(remote.noi.rentKey)noiRentKey=remote.noi.rentKey;}
+    try{localStorage.setItem(SK,JSON.stringify(Object.values(td)));}catch(e){}
+    render();setSync('ok');
+  }else{
+    setSync('ok');gistPush();
+  }
+}
 let syncTimer=null, lastPushAt=0;
 
 function snapshot(){
@@ -656,14 +698,29 @@ document.querySelectorAll('#phase-toggle button').forEach(b=>{
 
 // Boot
 loadNOI();
+loadCreds();
 if(!loadSaved())build(DD.map(r=>({...r,extraComments:[]})));
 render();
 if(migrated)save();
 setInd('saved');
 
+// Sync setup button — enter/update token + Gist ID anytime
+$('#sync-setup-btn').addEventListener('click',()=>promptCreds(true));
+
 // Cloud sync: pull shared state on load (Gist wins if present)
 (async function cloudBoot(){
-  if(!SYNC_ON()){setSync('off');return;}
+  if(!SYNC_ON()){
+    setSync('off');
+    // First visit on this device with no credentials yet — invite setup
+    setTimeout(()=>{
+      if(!SYNC_ON()){
+        if(confirm('Set up cloud sync on this device?\n\nYou\u2019ll paste your GitHub token and Gist ID once, and this browser will remember them. Tap Cancel to use this device offline.')){
+          promptCreds(true);
+        }
+      }
+    },400);
+    return;
+  }
   setSync('syncing');
   const remote=await gistPull();
   if(remote&&Array.isArray(remote.units)&&remote.units.length){
