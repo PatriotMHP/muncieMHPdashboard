@@ -22,7 +22,7 @@ h1{font-size:20px;font-weight:600;color:#1F2E3D;margin-bottom:4px}
 .btn-sm:hover{background:#F0F3F6}
 .banner{display:none;background:#1F4E79;color:#fff;font-size:11px;padding:8px 14px;border-radius:8px;margin-bottom:10px;text-align:center;font-weight:500}
 .banner.active{display:block}
-.cols{display:grid;grid-template-columns:repeat(11,minmax(96px,1fr));gap:8px;align-items:start;overflow-x:auto}
+.cols{display:grid;grid-template-columns:repeat(12,minmax(96px,1fr));gap:8px;align-items:start;overflow-x:auto}
 .lane{background:#fff;border:1px solid #E2E8EF;border-radius:10px;display:flex;flex-direction:column;min-width:90px}
 .lane.drop-target{outline:2px solid #2D7DD2;outline-offset:2px;cursor:pointer}
 .lane-hdr{padding:8px 7px 7px;border-bottom:1px solid #E2E8EF;text-align:center;border-radius:10px 10px 0 0}
@@ -39,7 +39,6 @@ h1{font-size:20px;font-weight:600;color:#1F2E3D;margin-bottom:4px}
 .tile-rent{font-size:9px;margin-top:3px;text-align:center;font-weight:500}
 .tile-rehab{font-size:8.5px;margin-top:2px;text-align:center;font-weight:600;opacity:.78;letter-spacing:.01em}
 .evict-dot{position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:#E53E3E}
-.handy-dot{position:absolute;bottom:3px;left:3px;width:6px;height:6px;border-radius:50%;background:#F2C200}
 .add-btn{width:100%;max-width:76px;height:34px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;border:1.5px dashed #C8D2DC;background:transparent;color:#9AAAB8;font-size:18px;margin-top:2px}
 .add-btn:hover{background:#F4F6F8}
 .rentbar{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin-bottom:12px}
@@ -137,9 +136,6 @@ textarea.finput{min-height:58px;resize:vertical}
 .evict-toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:#1F2E3D;cursor:pointer;padding:8px 10px;border:1px solid #E8B0A8;border-radius:7px;background:#FDF4F3;font-weight:500}
 .evict-toggle input{width:16px;height:16px;cursor:pointer;accent-color:#E53E3E}
 .evict-dot-lg{width:9px;height:9px;border-radius:50%;background:#E53E3E;display:inline-block}
-.handy-toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:#1F2E3D;cursor:pointer;padding:8px 10px;border:1px solid #E5D08A;border-radius:7px;background:#FEFBF0;font-weight:500}
-.handy-toggle input{width:16px;height:16px;cursor:pointer;accent-color:#F2C200}
-.handy-dot-lg{width:9px;height:9px;border-radius:50%;background:#F2C200;display:inline-block}
 .btn{font-size:12px;padding:6px 14px;border-radius:8px;border:1px solid #D0D7DF;background:#fff;color:#3D4D5C;cursor:pointer;font-weight:500;font-family:inherit}
 .btn:hover{background:#F0F3F6}
 .btn.pri{background:#1F4E79;color:#fff;border-color:#1F4E79}
@@ -306,6 +302,7 @@ const LANES=[
   {id:'phase2-rehab', label:'Phase 2 Rehab',   bg:'#FDEBD0',bd:'#E08020',tx:'#3D2000'},
   {id:'in-rehab',     label:'In Rehab',        bg:'#FDE8F2',bd:'#E890C0',tx:'#6B1840'},
   {id:'rehab-complete',label:'Rehab Complete', bg:'#E8F5E9',bd:'#88C878',tx:'#1A5020'},
+  {id:'handyman-avail',label:'Handy-Man Specials available', bg:'#FEF9E7',bd:'#E5C84D',tx:'#7A5A0A'},
   {id:'leased-pohs',  label:'Leased POHs',     bg:'#EEECFE',bd:'#A8A0E8',tx:'#2E2480'},
   {id:'tohs',         label:'TOHs',            bg:'#E2F6F0',bd:'#58C8A0',tx:'#084838'},
 ];
@@ -435,7 +432,7 @@ function render(){
       const showRehab=(lane.id!=='leased-pohs'&&lane.id!=='tohs')&&((t.rehab_estimate||0)||(t.spent_to_date||0)||(t.spent_next_2wk||0));
       let rh=null;
       if(showRehab){const est=t.rehab_estimate||0,sp=t.spent_to_date||0;rh=sp>0?`$${k(sp)} / $${k(est)}`:`est $${k(est)}`;}
-      el.innerHTML=`${t.eviction?'<div class="evict-dot"></div>':''}${t.handyman?'<div class="handy-dot"></div>':''}<span class="tile-id" style="color:${lane.tx}">${id}</span><span class="tile-type" style="color:${lane.tx}">${t.type||'pad'}</span>${rl?`<span class="tile-rent" style="color:${lane.tx}">${rl}</span>`:''}${rh?`<span class="tile-rehab" style="color:${lane.tx}">🔧 ${rh}</span>`:''}`;
+      el.innerHTML=`${t.eviction?'<div class="evict-dot"></div>':''}<span class="tile-id" style="color:${lane.tx}">${id}</span><span class="tile-type" style="color:${lane.tx}">${t.type||'pad'}</span>${rl?`<span class="tile-rent" style="color:${lane.tx}">${rl}</span>`:''}${rh?`<span class="tile-rehab" style="color:${lane.tx}">🔧 ${rh}</span>`:''}`;
       el.addEventListener('click',e=>{e.stopPropagation();if(selId===id){clearSel();return;}if(selId){moveTo(lane.id);return;}sel(id);});
       let ht;el.addEventListener('pointerdown',()=>{ht=setTimeout(()=>{clearSel();openModal(id);},500);});
       el.addEventListener('pointerup',()=>clearTimeout(ht));el.addEventListener('pointerleave',()=>clearTimeout(ht));
@@ -611,7 +608,7 @@ function openModal(id){
   const pb=t.park==='American'?'<span class="badge badge-a">American</span>':'<span class="badge badge-r">Redwood</span>';
   const nf=(fid,lbl,val)=>`<div class="fl"><span class="flbl">${lbl}</span><input class="finput" id="${fid}" type="number" value="${val!=null?val:''}" placeholder="—"></div>`;
   const overlay=document.createElement('div');overlay.className='overlay';
-  overlay.innerHTML=`<div class="modal"><div class="modal-top"><div><div class="modal-title">${id}${pb}</div><div class="modal-sub">${t.type||'pad'} · ${t.status} · ${t.decision||'—'}</div></div><button class="xbtn" id="xbtn">✕</button></div><div class="grid2"><div class="sec">Rents</div>${nf('f-cl','Current lot rent',t.cur_lot_rent)}${nf('f-cp','Current POH rent',t.cur_poh_rent)}${nf('f-pl','Prospective lot rent',t.pro_lot_rent)}${nf('f-pp','Prospective POH rent',t.pro_poh_rent)}<div class="sec">Rehab budget</div>${nf('f-est','Rehab estimate',t.rehab_estimate)}${nf('f-hmr','HandyMan Special Rehab',t.handyman_rehab)}<div class="fl"><span class="flbl">Phase</span><input class="finput" id="f-ph" type="text" value="${t.phase||''}" placeholder="—"></div>${nf('f-sp','Spent to date',t.spent_to_date)}${nf('f-n2','$ next 2 weeks',t.spent_next_2wk)}<div class="fl full"><span class="flbl">Budget used — <span id="bpct-lbl">${bp}%</span></span><div class="bbar-bg"><div id="bbar" class="bbar-fill" style="width:${bp}%;background:${L.bd}"></div></div></div><div class="fl"><span class="flbl">Vendor / GC</span><input class="finput" id="f-vd" type="text" value="${t.vendor||''}" placeholder="—"></div><div class="fl"><span class="flbl">Move to lane</span><select class="finput" id="f-ln">${lO}</select></div><div class="fl full"><label class="evict-toggle"><input type="checkbox" id="f-ev"${t.eviction?' checked':''}><span class="evict-dot-lg"></span>Eviction flag (red dot)</label></div><div class="fl full"><label class="handy-toggle"><input type="checkbox" id="f-hm"${t.handyman?' checked':''}><span class="handy-dot-lg"></span>Handy Man Special (yellow dot)</label></div></div><div class="sec" style="margin-top:.25rem">Comments</div><div class="clist" id="clist">${cHTML}</div><textarea class="finput" id="f-cm" placeholder="Add a comment…"></textarea><div class="btn-row"><button class="btn danger" id="dbtn">Delete tile</button><button class="btn" id="xbtn2">Cancel</button><button class="btn pri" id="sbtn">Save changes</button></div></div>`;
+  overlay.innerHTML=`<div class="modal"><div class="modal-top"><div><div class="modal-title">${id}${pb}</div><div class="modal-sub">${t.type||'pad'} · ${t.status} · ${t.decision||'—'}</div></div><button class="xbtn" id="xbtn">✕</button></div><div class="grid2"><div class="sec">Rents</div>${nf('f-cl','Current lot rent',t.cur_lot_rent)}${nf('f-cp','Current POH rent',t.cur_poh_rent)}${nf('f-pl','Prospective lot rent',t.pro_lot_rent)}${nf('f-pp','Prospective POH rent',t.pro_poh_rent)}<div class="sec">Rehab budget</div>${nf('f-est','Rehab estimate',t.rehab_estimate)}${nf('f-hmr','HandyMan Special Rehab',t.handyman_rehab)}<div class="fl"><span class="flbl">Phase</span><input class="finput" id="f-ph" type="text" value="${t.phase||''}" placeholder="—"></div>${nf('f-sp','Spent to date',t.spent_to_date)}${nf('f-n2','$ next 2 weeks',t.spent_next_2wk)}<div class="fl full"><span class="flbl">Budget used — <span id="bpct-lbl">${bp}%</span></span><div class="bbar-bg"><div id="bbar" class="bbar-fill" style="width:${bp}%;background:${L.bd}"></div></div></div><div class="fl"><span class="flbl">Vendor / GC</span><input class="finput" id="f-vd" type="text" value="${t.vendor||''}" placeholder="—"></div><div class="fl"><span class="flbl">Move to lane</span><select class="finput" id="f-ln">${lO}</select></div><div class="fl full"><label class="evict-toggle"><input type="checkbox" id="f-ev"${t.eviction?' checked':''}><span class="evict-dot-lg"></span>Eviction flag (red dot)</label></div></div><div class="sec" style="margin-top:.25rem">Comments</div><div class="clist" id="clist">${cHTML}</div><textarea class="finput" id="f-cm" placeholder="Add a comment…"></textarea><div class="btn-row"><button class="btn danger" id="dbtn">Delete tile</button><button class="btn" id="xbtn2">Cancel</button><button class="btn pri" id="sbtn">Save changes</button></div></div>`;
   document.body.appendChild(overlay);
   ['#f-est','#f-sp'].forEach(s=>{const el=overlay.querySelector(s);if(el)el.addEventListener('input',()=>{const e=parseFloat(overlay.querySelector('#f-est').value)||0,s=parseFloat(overlay.querySelector('#f-sp').value)||0,p=e>0?Math.min(100,Math.round(s/e*100)):0;const b=overlay.querySelector('#bbar'),l=overlay.querySelector('#bpct-lbl');if(b)b.style.width=p+'%';if(l)l.textContent=p+'%';});});
   const close=()=>overlay.remove();
@@ -633,7 +630,6 @@ function openModal(id){
     t.handyman_rehab=n('#f-hmr');
     t.phase=s('#f-ph');t.vendor=s('#f-vd');
     t.eviction=overlay.querySelector('#f-ev')?.checked?'Y':null;
-    t.handyman=overlay.querySelector('#f-hm')?.checked?'Y':null;
     const nl=overlay.querySelector('#f-ln').value;
     if(nl!==t.lane){lo[t.lane]=lo[t.lane].filter(x=>x!==id);lo[nl]=[...lo[nl],id];t.lane=nl;const fp=phaseForLane(nl);if(fp)t.phase=fp;}
     const ct=overlay.querySelector('#f-cm')?.value.trim();if(ct)t.extraComments.unshift({ts:ts(),txt:ct});
