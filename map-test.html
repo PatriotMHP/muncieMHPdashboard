@@ -245,7 +245,7 @@ select.finput{cursor:pointer}
   </div>
 
   <!-- OVERVIEW TAB -->
-  <div id="overview" class="view active">
+  <div id="overview" class="view active"><div id="overview-live">
     <div class="kpi-grid">
       <div class="kpi"><div class="kpi-label">Total Tenants</div><div class="kpi-value">22</div><div class="kpi-sub">2 properties</div></div>
       <div class="kpi green"><div class="kpi-label">Monthly Scheduled</div><div class="kpi-value">$9,625</div><div class="kpi-sub">All recurring charges</div></div>
@@ -287,6 +287,7 @@ select.finput{cursor:pointer}
     </div>
   </div>
 
+</div><!-- end overview-live -->
   <!-- BALANCES TAB -->
   <div id="balances" class="view">
     <div class="filter-bar">
@@ -1065,7 +1066,7 @@ const balanceData = [
 ];
 
 function renderBalances(filter) {
-  let rows = balanceData;
+  let rows = window._liveBalanceData || balanceData;
   if (filter === 'delinquent') rows = rows.filter(r => r.balance > 0);
   else if (filter === 'current') rows = rows.filter(r => r.balance <= 0);
   else if (filter === 'american') rows = rows.filter(r => r.prop === 'american');
@@ -1385,6 +1386,100 @@ renderExpenses(capexData, 'capex-tbody', 'all');
     });
   }
 
+
+  function wireOverviewTab(rm){
+    const el = document.getElementById('overview-live'); if(!el) return;
+    const bal = rm.balance_due||[];
+    const rr = rm.rent_roll||[];
+    const delinq = bal.filter(b=>b.balance>0);
+    const current = bal.filter(b=>b.balance<=0 && b.balance>=0);
+    const credit = bal.filter(b=>b.balance<0);
+    const totalOwed = delinq.reduce((s,b)=>s+b.balance,0);
+    const totalMonthly = rr.reduce((s,r)=>s+r.total,0);
+    const annualRate = totalMonthly*12;
+    const delinqRate = bal.length ? ((delinq.length/bal.length)*100).toFixed(1) : 0;
+    const money = n => '$'+Math.round(Math.abs(n)).toLocaleString();
+    const amRR = rr.filter(r=>r.property.includes('American'));
+    const rwRR = rr.filter(r=>r.property.includes('Redwood'));
+    const amBal = bal.filter(b=>b.unit_id.startsWith('A-'));
+    const rwBal = bal.filter(b=>b.unit_id.startsWith('R-'));
+    const amMonthly = amRR.reduce((s,r)=>s+r.total,0);
+    const rwMonthly = rwRR.reduce((s,r)=>s+r.total,0);
+    const amOwed = amBal.filter(b=>b.balance>0).reduce((s,b)=>s+b.balance,0);
+    const rwOwed = rwBal.filter(b=>b.balance>0).reduce((s,b)=>s+b.balance,0);
+    // top delinquent for bar chart — sort descending
+    const topDelinq = [...delinq].sort((a,b)=>b.balance-a.balance);
+    const maxBal = topDelinq.length ? topDelinq[0].balance : 1;
+
+    el.innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Total Tenants</div><div class="kpi-value">${bal.length}</div><div class="kpi-sub">2 properties</div></div>
+      <div class="kpi green"><div class="kpi-label">Monthly Scheduled</div><div class="kpi-value">${money(totalMonthly)}</div><div class="kpi-sub">All recurring charges</div></div>
+      <div class="kpi red"><div class="kpi-label">Total Outstanding</div><div class="kpi-value">${money(totalOwed)}</div><div class="kpi-sub">Across ${delinq.length} tenants</div></div>
+      <div class="kpi orange"><div class="kpi-label">Delinquent Tenants</div><div class="kpi-value">${delinq.length} / ${bal.length}</div><div class="kpi-sub">${delinqRate}% delinquency rate</div></div>
+      <div class="kpi green"><div class="kpi-label">Current Tenants</div><div class="kpi-value">${current.length}</div><div class="kpi-sub">${credit.length?'+ '+credit.length+' credit balance':''}</div></div>
+      <div class="kpi yellow"><div class="kpi-label">Annual Run Rate</div><div class="kpi-value">$${(annualRate/1000).toFixed(1)}K</div><div class="kpi-sub">Projected 12-month</div></div>
+    </div>
+    <div class="two-col">
+      <div class="info-box">
+        <h3>By Property</h3>
+        <div class="info-row"><span class="lbl">American MHP — Monthly</span><span class="val amt-green">${money(amMonthly)}</span></div>
+        <div class="info-row"><span class="lbl">American MHP — Outstanding</span><span class="val ${amOwed>0?'amt-owed':'amt-zero'}">${amOwed>0?money(amOwed):'$0'}</span></div>
+        <div class="info-row"><span class="lbl">Redwood MHP — Monthly</span><span class="val amt-green">${money(rwMonthly)}</span></div>
+        <div class="info-row"><span class="lbl">Redwood MHP — Outstanding</span><span class="val ${rwOwed>0?'amt-owed':'amt-zero'}">${rwOwed>0?money(rwOwed):'$0'}</span></div>
+      </div>
+      <div class="info-box">
+        <h3>Data Source</h3>
+        <div class="info-row"><span class="lbl">Source</span><span class="val" style="color:#5ee8a0">Rent Manager (live)</span></div>
+        <div class="info-row"><span class="lbl">Last Updated</span><span class="val" style="color:#7b7f9e">${rm.updated_at ? new Date(rm.updated_at).toLocaleString() : '—'}</span></div>
+        <div class="info-row"><span class="lbl">Email</span><span class="val" style="color:#7b7f9e">${rm.email_subject||'—'}</span></div>
+      </div>
+    </div>
+    <div class="delq-section">
+      <h3>Top Balances Owed</h3>
+      ${topDelinq.map(d=>{
+        const pct = Math.round((d.balance/maxBal)*100);
+        const park = d.unit_id.startsWith('A-')?'American':'Redwood';
+        return `<div class="bar-row"><div class="bar-name">${d.tenant} (${park} Lot ${d.unit})</div><div class="bar-track"><div class="bar-fill red" style="width:${pct}%"></div></div><div class="bar-amt amt-owed">${money(d.balance)}</div></div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  function wireBalancesTab(rm){
+    // Replace the global balanceData with live RM data so renderBalances uses it
+    if(rm.balance_due && rm.balance_due.length){
+      window._liveBalanceData = rm.balance_due.map(b=>({
+        name: b.tenant,
+        acct: parseInt(b.unit)||0,
+        lot: parseInt(b.unit)||0,
+        prop: b.unit_id.startsWith('A-') ? 'american' : 'redwood',
+        phone: b.phone||'',
+        balance: b.balance
+      }));
+      // re-render with updated data
+      if(typeof renderBalances === 'function') renderBalances('all');
+    }
+  }
+
+  function wireRentRollTab(rm){
+    if(!rm.rent_roll || !rm.rent_roll.length) return;
+    // Update American table
+    const amTbody = document.getElementById('rr-american')?.querySelector('tbody');
+    const rwTbody = document.getElementById('rr-redwood')?.querySelector('tbody');
+    const money = n => '$'+Math.round(n).toLocaleString();
+    function renderRR(tbody, units){
+      if(!tbody) return;
+      let totalLot=0, totalRC=0, totalAll=0;
+      const rows = units.map(r=>{
+        totalLot+=r.lot_rent; totalRC+=r.rc; totalAll+=r.total;
+        return `<tr><td class="tn">${r.tenant}</td><td>${r.unit}</td><td class="r amt-base">${money(r.lot_rent)}</td><td class="r amt-orange">${r.rc?money(r.rc):'—'}</td><td class="r amt-green">${money(r.total)}</td><td class="r amt-owed">${'—'}</td></tr>`;
+      }).join('');
+      tbody.innerHTML = rows + `<tr style="font-weight:700;border-top:2px solid #2e3248"><td>Total (${units.length} tenants)</td><td></td><td class="r">${money(totalLot)}</td><td class="r">${money(totalRC)}</td><td class="r amt-green">${money(totalAll)}</td><td></td></tr>`;
+    }
+    renderRR(amTbody, rm.rent_roll.filter(r=>r.property.includes('American')));
+    renderRR(rwTbody, rm.rent_roll.filter(r=>r.property.includes('Redwood')));
+  }
+
   async function boot(){
     let units = await pullGist();
     const live = !!units;
@@ -1453,15 +1548,18 @@ renderExpenses(capexData, 'capex-tbody', 'all');
   }
   styleLots(units);
 
-    // Pull Rent Manager data and update financial panels + delinquent flags
+    // Pull Rent Manager data and update ALL tabs
     const rmData = await pullRMData();
     if(rmData){
       renderFinancialStatus(rmData, 'Redwood', 'rw-fin-live');
       renderFinancialStatus(rmData, 'American', 'am-fin-live');
       updateMapDelinqFlags(rmData);
-      console.log('RM data loaded, updated:', rmData.updated_at);
+      wireOverviewTab(rmData);
+      wireBalancesTab(rmData);
+      wireRentRollTab(rmData);
+      console.log('RM data loaded, all tabs wired. Updated:', rmData.updated_at);
     } else {
-      console.log('No RM data in gist yet — using hardcoded financials');
+      console.log('No RM data in gist yet — using hardcoded data');
     }
   }
   window.refreshParkMap = boot;
