@@ -177,6 +177,52 @@ select.finput{cursor:pointer}
 </style>
 </head>
 <body>
+<!-- ===== PASSWORD GATE ===== -->
+<style>
+#pw-gate{position:fixed;inset:0;z-index:9999;background:#13141c;display:flex;align-items:center;justify-content:center;flex-direction:column}
+#pw-gate.hidden{display:none}
+.pw-box{background:#1e2130;border:1px solid #2e3248;border-radius:12px;padding:2.5rem 2rem;width:90%;max-width:380px;text-align:center}
+.pw-box h2{color:#fff;font-size:1.3rem;margin-bottom:6px}
+.pw-box p{color:#7b7f9e;font-size:.8rem;margin-bottom:1.5rem}
+.pw-box input{width:100%;padding:12px 14px;border:1px solid #35394d;border-radius:8px;background:#22253a;color:#e0e2ef;font-size:1rem;font-family:inherit;text-align:center;letter-spacing:2px}
+.pw-box input:focus{outline:none;border-color:#4458d4}
+.pw-box .pw-btn{margin-top:1rem;width:100%;padding:11px;border:none;border-radius:8px;background:#4458d4;color:#fff;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit}
+.pw-box .pw-btn:hover{background:#3648b0}
+.pw-err{color:#e05c5c;font-size:.8rem;margin-top:.75rem;min-height:1.2em}
+.pw-box .pw-logo{font-size:.7rem;color:#4458d4;text-transform:uppercase;letter-spacing:.15em;margin-bottom:1.2rem}
+</style>
+<div id="pw-gate">
+  <div class="pw-box">
+    <div class="pw-logo">Patriot MHP</div>
+    <h2>Dashboard Login</h2>
+    <p>Enter the access password to continue</p>
+    <input type="password" id="pw-input" placeholder="Password" autocomplete="off">
+    <button class="pw-btn" id="pw-submit">Sign In</button>
+    <div class="pw-err" id="pw-err"></div>
+  </div>
+</div>
+<script>
+(function(){
+  const GATE_KEY='mhp-pw-ok';
+  // Simple hash check — not cryptographic, just obscures the password from casual source viewing
+  function simpleHash(s){let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return h;}
+  const HASH = -1686327551; // test password: patriot2026 — change before going live
+  function unlock(){
+    document.getElementById('pw-gate').classList.add('hidden');
+    try{localStorage.setItem(GATE_KEY,'1');}catch(e){}
+  }
+  // check if already authenticated in this browser
+  try{if(localStorage.getItem(GATE_KEY)==='1'){unlock();}}catch(e){}
+  document.getElementById('pw-submit').addEventListener('click',check);
+  document.getElementById('pw-input').addEventListener('keydown',e=>{if(e.key==='Enter')check();});
+  function check(){
+    const v=document.getElementById('pw-input').value;
+    if(simpleHash(v)===HASH){unlock();}
+    else{document.getElementById('pw-err').textContent='Incorrect password. Try again.';}
+  }
+})();
+</script>
+<!-- ===== END PASSWORD GATE ===== -->
 
 <header>
   <div class="logo">
@@ -744,11 +790,13 @@ select.finput{cursor:pointer}
         </div>
         <div class="side-box">
           <h4>Financial Status</h4>
+          <div id="rw-fin-live">
           <div class="side-stat"><span class="s-l">Current</span><span class="s-v" style="color:#5ee8a0">8 tenants</span></div>
           <div class="side-stat"><span class="s-l">Delinquent</span><span class="s-v" style="color:#e05c5c">10 tenants</span></div>
           <div class="side-stat"><span class="s-l">Credit</span><span class="s-v" style="color:#7d8fe8">1 tenant</span></div>
           <div class="side-stat"><span class="s-l">Total Owed</span><span class="s-v" style="color:#e05c5c">$32,518</span></div>
           <div class="side-stat"><span class="s-l">Monthly Rev</span><span class="s-v" style="color:#5ee8a0">$7,675</span></div>
+          </div>
         </div>
         <div class="side-box" id="lot-detail-box" style="display:none">
           <h4>Selected Lot</h4>
@@ -763,11 +811,13 @@ select.finput{cursor:pointer}
         </div>
         <div class="side-box">
           <h4>Financial Status</h4>
+          <div id="am-fin-live">
           <div class="side-stat"><span class="s-l">Current Tenants</span><span class="s-v" style="color:#5ee8a0">6</span></div>
           <div class="side-stat"><span class="s-l">Delinquent</span><span class="s-v" style="color:#5ee8a0">None</span></div>
           <div class="side-stat"><span class="s-l">Total Owed</span><span class="s-v" style="color:#5ee8a0">$0</span></div>
           <div class="side-stat"><span class="s-l">Monthly Rev</span><span class="s-v" style="color:#5ee8a0">$1,950</span></div>
           <div class="side-stat"><span class="s-l">Collection Rate</span><span class="s-v" style="color:#5ee8a0">100%</span></div>
+          </div>
         </div>
         <div class="side-box" id="lot-detail-box-am" style="display:none">
           <h4>Selected Lot</h4>
@@ -1227,6 +1277,21 @@ renderExpenses(capexData, 'capex-tbody', 'all');
 
   const money=n=>{const neg=n<0;const a=Math.abs(Math.round(n||0));return (neg?'-$':'$')+a.toLocaleString();};
 
+
+  const RM_FILE = 'rm-data.json';
+  async function pullRMData(){
+    const tok=getToken();
+    if(tok.length<10) return null;
+    try{
+      const r=await fetch(`https://api.github.com/gists/${GIST_ID}`,{headers:{Authorization:`Bearer ${tok}`,Accept:'application/vnd.github+json'}});
+      if(!r.ok) return null;
+      const g=await r.json();
+      const f=g.files&&g.files[RM_FILE];
+      if(!f||!f.content) return null;
+      return JSON.parse(f.content);
+    }catch(e){ console.warn('RM data pull failed', e); return null; }
+  }
+
   function parkFigures(units, parkName){
     const p = units.filter(u=>u.park===parkName);
     const byLane = {};
@@ -1262,6 +1327,62 @@ renderExpenses(capexData, 'capex-tbody', 'all');
       `<tr style="font-weight:700;border-top:2px solid #2e3248"><td>Total</td><td>${money(tot.budg)}</td><td>${money(tot.spent)}</td><td style="color:#f0a04b">${money(tot.remaining)}</td><td>${money(tot.hmr)}</td></tr>`;
     const src=document.getElementById('rehab-budget-src');
     if(src) src.textContent = live ? '· live from gist' : '· baked snapshot (enter token to sync live)';
+  }
+
+
+  function renderFinancialStatus(rmData, parkName, elId){
+    const el = document.getElementById(elId); if(!el) return;
+    const prefix = parkName==='Redwood' ? 'Redwood' : 'American';
+    // filter balance_due by property
+    const balances = (rmData.balance_due||[]).filter(b => b.property.includes(prefix));
+    const delinq = balances.filter(b => b.balance > 0);
+    const current = balances.filter(b => b.balance <= 0);
+    const totalOwed = delinq.reduce((s,b) => s+b.balance, 0);
+    const totalRent = (rmData.rent_roll||[]).filter(r => r.property.includes(prefix)).reduce((s,r) => s+r.total, 0);
+    const money = n => '$'+Math.abs(Math.round(n)).toLocaleString();
+    
+    let rows = '';
+    rows += `<div class="side-stat"><span class="s-l">Current</span><span class="s-v" style="color:#5ee8a0">${current.length} tenants</span></div>`;
+    rows += `<div class="side-stat"><span class="s-l">Delinquent</span><span class="s-v" style="color:${delinq.length?'#e05c5c':'#5ee8a0'}">${delinq.length?delinq.length+' tenants':'None'}</span></div>`;
+    rows += `<div class="side-stat"><span class="s-l">Total Owed</span><span class="s-v" style="color:${totalOwed>0?'#e05c5c':'#5ee8a0'}">${totalOwed>0?money(totalOwed):'$0'}</span></div>`;
+    rows += `<div class="side-stat"><span class="s-l">Monthly Rev</span><span class="s-v" style="color:#5ee8a0">${money(totalRent)}</span></div>`;
+    if(rmData.updated_at){
+      const d=new Date(rmData.updated_at);
+      rows += `<div class="side-stat"><span class="s-l">RM Updated</span><span class="s-v" style="color:#7b7f9e;font-size:0.7rem">${d.toLocaleDateString()}</span></div>`;
+    }
+    el.innerHTML = rows;
+  }
+
+  function updateMapDelinqFlags(rmData){
+    // Replace hardcoded delinquent flags with real RM balance data
+    const balById = {};
+    (rmData.balance_due||[]).forEach(b => { balById[b.unit_id] = b; });
+    document.querySelectorAll('.lot-group').forEach(g => {
+      const lot = g.getAttribute('data-lot');
+      const park = g.getAttribute('data-park');
+      const prefix = park==='american' ? 'A-' : 'R-';
+      const uid = prefix + lot;
+      const rm = balById[uid];
+      // update data attributes with RM data
+      if(rm){
+        g.setAttribute('data-balance', rm.balance);
+        g.setAttribute('data-status', rm.balance > 0 ? 'delinquent' : 'current');
+        g.setAttribute('data-name', rm.tenant);
+      }
+      // re-draw delinquent flag based on RM balance
+      const rect = g.querySelector('rect');
+      const old = g.querySelector('.delinq-flag'); if(old) old.remove();
+      const bal = parseFloat(g.getAttribute('data-balance')||'0');
+      if(bal > 0 && rect){
+        const x=parseFloat(rect.getAttribute('x')), y=parseFloat(rect.getAttribute('y')), w=parseFloat(rect.getAttribute('width'));
+        const ns='http://www.w3.org/2000/svg';
+        const circ=document.createElementNS(ns,'circle');
+        circ.setAttribute('class','delinq-flag');
+        circ.setAttribute('cx',x+w-5); circ.setAttribute('cy',y+5); circ.setAttribute('r',5);
+        circ.setAttribute('fill','#e05c5c'); circ.setAttribute('stroke','#fff'); circ.setAttribute('stroke-width','1.2');
+        g.appendChild(circ);
+      }
+    });
   }
 
   async function boot(){
@@ -1331,6 +1452,17 @@ renderExpenses(capexData, 'capex-tbody', 'all');
     });
   }
   styleLots(units);
+
+    // Pull Rent Manager data and update financial panels + delinquent flags
+    const rmData = await pullRMData();
+    if(rmData){
+      renderFinancialStatus(rmData, 'Redwood', 'rw-fin-live');
+      renderFinancialStatus(rmData, 'American', 'am-fin-live');
+      updateMapDelinqFlags(rmData);
+      console.log('RM data loaded, updated:', rmData.updated_at);
+    } else {
+      console.log('No RM data in gist yet — using hardcoded financials');
+    }
   }
   window.refreshParkMap = boot;
   boot();
