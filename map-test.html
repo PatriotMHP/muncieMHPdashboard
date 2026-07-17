@@ -15,6 +15,10 @@ header {
 .logo h1 { font-size:1.2rem; font-weight:700; color:#fff; }
 .logo span { font-size:0.7rem; color:#7b7f9e; text-transform:uppercase; letter-spacing:.1em; display:block; margin-top:2px; }
 .as-of { font-size:0.75rem; color:#7b7f9e; background:#22253a; padding:6px 14px; border-radius:20px; border:1px solid #2e3248; }
+.sync-ind{font-size:0.75rem;padding:6px 14px;border-radius:20px;font-weight:500}
+.sync-ind.syncing{background:#3d3520;color:#f0a04b;border:1px solid #5a4a20}
+.sync-ind.saved{background:#1a3d28;color:#5ee8a0;border:1px solid #2a5a38}
+.sync-ind.err{background:#3d1a1a;color:#e05c5c;border:1px solid #5a2828}
 
 .container { max-width:1280px; margin:0 auto; padding:28px 24px; }
 
@@ -229,7 +233,11 @@ select.finput{cursor:pointer}
     <h1>Patriot Mobile Home Parks Muncie</h1>
     <span>Muncie, IN</span>
   </div>
-  <div class="as-of" id="as-of-date">As of —</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="sync-ind" id="sync-ind" style="display:none"></span>
+    <button class="as-of" id="sync-setup-btn" style="cursor:pointer;border:1px solid #35394d;background:#22253a" onclick="if(typeof promptCreds==='function')promptCreds(true)">☁ Sync setup</button>
+    <div class="as-of" id="as-of-date">As of —</div>
+  </div>
 </header>
 
 <div class="container">
@@ -2218,6 +2226,13 @@ moduleBoot();
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <script>
+function waitForChart(fn, tries){
+  tries = tries || 0;
+  if(typeof Chart !== 'undefined'){ fn(); }
+  else if(tries < 50){ setTimeout(function(){ waitForChart(fn, tries+1); }, 100); }
+  else { console.error('Chart.js failed to load after 5 seconds'); }
+}
+waitForChart(function(){
 /* ===== HISTORICAL PERFORMANCE — COMBINED CHART ===== */
 (function(){
   // All available months
@@ -2354,6 +2369,7 @@ moduleBoot();
   toSel.addEventListener('change', buildChart);
   buildChart();
 })();
+}); // end waitForChart
 </script>
 
 </body>
