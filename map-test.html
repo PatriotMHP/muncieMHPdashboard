@@ -913,20 +913,20 @@ select.finput{cursor:pointer}
 
   <div id="capex" class="view">
     <div class="kpi-grid">
-      <div class="kpi red"><div class="kpi-label">Total CapEx YTD</div><div class="kpi-value">$45,673</div></div>
-      <div class="kpi orange"><div class="kpi-label">Capex Expenses</div><div class="kpi-value">$43,541</div></div>
-      <div class="kpi"><div class="kpi-label">Home Renovation</div><div class="kpi-value">$2,132</div></div>
-      <div class="kpi yellow"><div class="kpi-label">Combined OpEx+CapEx</div><div class="kpi-value">$97,105</div></div>
+      <div class="kpi red"><div class="kpi-label">Total CapEx YTD</div><div class="kpi-value" id="cx-total-ytd">$45,673</div></div>
+      <div class="kpi orange"><div class="kpi-label">Capex Expenses</div><div class="kpi-value" id="cx-capex-only">$43,541</div></div>
+      <div class="kpi"><div class="kpi-label">Home Renovation</div><div class="kpi-value" id="cx-reno">$2,132</div></div>
+      <div class="kpi yellow"><div class="kpi-label">Combined OpEx+CapEx</div><div class="kpi-value" id="cx-combined">$97,105</div></div>
     </div>
 
     <div class="two-col" style="margin-bottom:20px">
-      <div class="info-box">
+      <div class="info-box" id="cx-by-property">
         <h3>CapEx by Property</h3>
         <div class="info-row"><span class="lbl">Redwood MHP</span><span class="val amt-owed">$36,076</span></div>
         <div class="info-row"><span class="lbl">American MHP</span><span class="val amt-orange">$9,597</span></div>
         <div class="info-row"><span class="lbl" style="font-weight:700">Total CapEx</span><span class="val amt-owed">$45,673</span></div>
       </div>
-      <div class="info-box">
+      <div class="info-box" id="cx-by-vendor">
         <h3>CapEx by Vendor — Top 3</h3>
         <div class="info-row"><span class="lbl">Jason Coons</span><span class="val amt-owed">$15,000</span></div>
         <div class="info-row"><span class="lbl">Hoosier Drain Guys</span><span class="val amt-orange">$14,272</span></div>
@@ -934,7 +934,7 @@ select.finput{cursor:pointer}
       </div>
     </div>
 
-    <div class="delq-section" style="margin-bottom:20px">
+    <div class="delq-section" style="margin-bottom:20px" id="cx-vendor-bars">
       <h3>CapEx Spend by Vendor</h3>
       <div class="bar-row"><div class="bar-name">Jason Coons</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:linear-gradient(90deg,#a03333,#e05c5c)"></div></div><div class="bar-amt amt-owed">$15,000</div></div>
       <div class="bar-row"><div class="bar-name">Hoosier Drain Guys</div><div class="bar-track"><div class="bar-fill" style="width:95%;background:linear-gradient(90deg,#c47a25,#f0a04b)"></div></div><div class="bar-amt amt-orange">$14,272</div></div>
@@ -1235,7 +1235,7 @@ function filterOpex(cat, btn) {
 function filterCapex(cat, btn) {
   document.querySelectorAll('#capex .filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  renderExpenses(capexData, 'capex-tbody', cat);
+  renderExpenses(window.capexData || capexData, 'capex-tbody', cat);
 }
 
 renderExpenses(opexData, 'opex-tbody', 'all');
@@ -2304,6 +2304,18 @@ moduleBoot();
       return JSON.parse(f.content);
     }catch(e){ console.warn('Payables history fetch failed', e); return null; }
   }
+  async function fetchCapexTransactions(){
+    const tok = getOccToken();
+    if(tok.length<10) return null;
+    try{
+      const r = await fetch(`https://api.github.com/gists/${OCC_GIST_ID}`, {headers:{Authorization:`Bearer ${tok}`, Accept:'application/vnd.github+json'}});
+      if(!r.ok) return null;
+      const g = await r.json();
+      const f = g.files && g.files['capex-transactions.json'];
+      if(!f || !f.content) return null;
+      return JSON.parse(f.content);
+    }catch(e){ console.warn('CapEx transactions fetch failed', e); return null; }
+  }
 
   // ---- RAW DATA (placeholder for rent roll/collected until Charges & Receipts is live) ----
   const DATA = {
@@ -2552,6 +2564,65 @@ moduleBoot();
     } else {
       console.log('Payables history not available yet — using placeholder CapEx/OpEx figures');
     }
+  })();
+
+  // Fetch full CapEx transaction detail and populate the CapEx tab
+  (async function loadRealCapexTab(){
+    const tx = await fetchCapexTransactions();
+    if(!tx || !Array.isArray(tx) || !tx.length){
+      console.log('CapEx transactions not available yet — CapEx tab shows placeholder data');
+      return;
+    }
+    const money = n => '$'+Math.abs(Math.round(n)).toLocaleString();
+
+    // KPI tiles
+    const capexOnly = tx.filter(t => t.category !== 'Home Renovation Expenses' && t.category !== '9001 Home Renovation Expenses');
+    const renoOnly = tx.filter(t => t.category === 'Home Renovation Expenses' || t.category === '9001 Home Renovation Expenses');
+    const capexOnlyTotal = capexOnly.reduce((s,t)=>s+t.amount,0);
+    const renoTotal = renoOnly.reduce((s,t)=>s+t.amount,0);
+    const totalCapex = capexOnlyTotal + renoTotal;
+    const opexYtd = Object.values(opexByMonth).reduce((s,m)=>s+Object.values(m).reduce((a,b)=>a+b,0),0);
+
+    const set = (id,val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+    set('cx-total-ytd', money(totalCapex));
+    set('cx-capex-only', money(capexOnlyTotal));
+    set('cx-reno', money(renoTotal));
+    set('cx-combined', money(totalCapex + opexYtd));
+
+    // CapEx by Property
+    const byProp = {};
+    tx.forEach(t => { byProp[t.property] = (byProp[t.property]||0) + t.amount; });
+    const propBox = document.getElementById('cx-by-property');
+    if(propBox){
+      const rows = Object.entries(byProp).sort((a,b)=>b[1]-a[1])
+        .map(([p,amt]) => `<div class="info-row"><span class="lbl">${p} MHP</span><span class="val amt-owed">${money(amt)}</span></div>`).join('');
+      propBox.innerHTML = `<h3>CapEx by Property</h3>${rows}<div class="info-row" style="border-top:1px solid #2e3248;margin-top:4px;padding-top:8px"><span class="lbl" style="font-weight:700">Total CapEx</span><span class="val amt-owed" style="font-weight:700">${money(totalCapex)}</span></div>`;
+    }
+
+    // CapEx by Vendor — top 3 + full bar chart
+    const byVendor = {};
+    tx.forEach(t => { byVendor[t.vendor] = (byVendor[t.vendor]||0) + t.amount; });
+    const sortedVendors = Object.entries(byVendor).sort((a,b)=>b[1]-a[1]);
+    const vendorBox = document.getElementById('cx-by-vendor');
+    if(vendorBox){
+      const rows = sortedVendors.slice(0,3).map(([v,amt]) => `<div class="info-row"><span class="lbl">${v}</span><span class="val amt-owed">${money(amt)}</span></div>`).join('');
+      vendorBox.innerHTML = `<h3>CapEx by Vendor — Top 3</h3>${rows}`;
+    }
+    const barsBox = document.getElementById('cx-vendor-bars');
+    if(barsBox && sortedVendors.length){
+      const maxAmt = sortedVendors[0][1];
+      const bars = sortedVendors.map(([v,amt]) => {
+        const pct = Math.round((amt/maxAmt)*100);
+        return `<div class="bar-row"><div class="bar-name">${v}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:linear-gradient(90deg,#a03333,#e05c5c)"></div></div><div class="bar-amt amt-owed">${money(amt)}</div></div>`;
+      }).join('');
+      barsBox.innerHTML = `<h3>CapEx Spend by Vendor</h3>${bars}`;
+    }
+
+    // Transaction table — replace global capexData used by filterCapex/renderExpenses
+    window.capexData = tx.map(t => ({date:t.date, vendor:t.vendor, memo:t.memo, property:t.property, cat:t.category, amount:t.amount}));
+    if(typeof renderExpenses === 'function') renderExpenses(window.capexData, 'capex-tbody', 'all');
+
+    console.log('Real CapEx transaction detail loaded from gist:', tx.length, 'transactions');
   })();
 })();
 
