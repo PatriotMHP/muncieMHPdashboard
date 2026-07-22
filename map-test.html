@@ -1620,6 +1620,12 @@ renderExpenses(capexData, 'capex-tbody', 'all');
   function styleLots(units){
     // build lookup: R-2 / A-5 -> unit
     const byId={}; units.forEach(u=>byId[u.id]=u);
+    // Prefer live tracker state when present, so edits made in the modal show
+    // on the map immediately rather than waiting for a Gist round-trip.
+    try{
+      const T=window.__trackerData;
+      if(T) Object.keys(T).forEach(id=>{ byId[id] = T[id]; });
+    }catch(e){}
     document.querySelectorAll('.lot-group').forEach(g=>{
       const lot=g.getAttribute('data-lot');
       const park=g.getAttribute('data-park'); // 'redwood' | 'american'
@@ -1638,6 +1644,39 @@ renderExpenses(capexData, 'capex-tbody', 'all');
         g.setAttribute('data-mycol', c.label);
         g.setAttribute('data-myid', unit.id);
       }
+      // ---- Eviction stage ring (from tracker data) ----
+      // Overrides the lane stroke so the stage reads at a glance on the map.
+      const EV_MAP={
+        notice:{color:'#E5B800',line:false},
+        filed :{color:'#E8811F',line:false},
+        court :{color:'#D02F2F',line:false},
+        dated :{color:'#D02F2F',line:true}
+      };
+      const oldLine=g.querySelector('.evict-line'); if(oldLine) oldLine.remove();
+      let ev = unit && unit.eviction ? unit.eviction : null;
+      if(ev==='Y'||ev===true) ev='notice';           // legacy flag
+      if(ev && !EV_MAP[ev]) ev='notice';             // unknown value
+      if(ev && rect && EV_MAP[ev]){
+        const e=EV_MAP[ev];
+        rect.setAttribute('stroke', e.color);
+        rect.setAttribute('stroke-width','4');
+        g.setAttribute('data-evict', ev);
+        if(e.line){
+          const x=parseFloat(rect.getAttribute('x')), y=parseFloat(rect.getAttribute('y'));
+          const w=parseFloat(rect.getAttribute('width')), ht=parseFloat(rect.getAttribute('height'));
+          const ns2='http://www.w3.org/2000/svg';
+          const ln=document.createElementNS(ns2,'line');
+          ln.setAttribute('class','evict-line');
+          ln.setAttribute('x1',x); ln.setAttribute('y1',y+ht/2);
+          ln.setAttribute('x2',x+w); ln.setAttribute('y2',y+ht/2);
+          ln.setAttribute('stroke',e.color); ln.setAttribute('stroke-width','3.5');
+          ln.setAttribute('stroke-linecap','round');
+          g.appendChild(ln);
+        }
+      } else if(g.hasAttribute('data-evict')){
+        g.removeAttribute('data-evict');
+      }
+
       // delinquent flag (from his data for now)
       const status=g.getAttribute('data-status');
       const bal=parseFloat(g.getAttribute('data-balance')||'0');
