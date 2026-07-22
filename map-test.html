@@ -2394,12 +2394,56 @@ moduleBoot();
   const TOP_CATS = ['Salaries & Wages','PAYROLL EXPENSES','Water & Sewer','REPAIRS & MAINTENANCE',
                     'Landscaping','Pest Control','Professional Fees','Liability Insurance Expense',
                     'Capex Expenses','Home Renovation Expenses'];
+  // Keyed on the exact GL-prefixed category names Rent Manager sends.
+  // Verified against live data 2026-07-22 (16 categories).
   const CAT_COLORS = {
-    'Salaries & Wages':'#B45309','PAYROLL EXPENSES':'#D97706','Water & Sewer':'#F59E0B',
-    'REPAIRS & MAINTENANCE':'#FBBF24','Landscaping':'#92400E','Pest Control':'#EA580C',
-    'Professional Fees':'#C2410C','Liability Insurance Expense':'#A16207',
-    'Capex Expenses':'#78350F','Home Renovation Expenses':'#CA8A04','Other':'#57534E'
+    '1201 Payroll':'#D97706',
+    '2540 Payroll Liabilities':'#B45309',
+    '5053 Liability Insurance Expense':'#A16207',
+    '5061 Professional Fees':'#C2410C',
+    '5062 Legal Fees':'#9A3412',
+    '5063 Accounting Fees':'#7C2D12',
+    '5100 REPAIRS & MAINTENANCE':'#FBBF24',
+    '5104 Landscaping':'#65A30D',
+    '5108 Plumbing':'#0891B2',
+    '5109 Pest Control':'#EA580C',
+    '5110 Supplies Expense':'#CA8A04',
+    '5402 Water & Sewer':'#0EA5E9',
+    '5404 Garbage':'#78716C',
+    '5601 Office Supplies':'#A855F7',
+    '5700 PAYROLL EXPENSES':'#F59E0B',
+    '5701 Salaries & Wages':'#EAB308',
+    // CapEx buckets (not stacked with OpEx but kept for the legend)
+    '1202 Capex Expenses':'#78350F',
+    '9000 Capex Expenses':'#78350F',
+    '9001 Home Renovation Expenses':'#92400E',
+    'Other':'#57534E'
   };
+  // Any category not listed above still gets its own distinct color rather
+  // than collapsing to grey.
+  const FALLBACK_PALETTE = ['#D97706','#F59E0B','#FBBF24','#EA580C','#C2410C',
+    '#A16207','#92400E','#78350F','#CA8A04','#B45309','#9A3412','#7C2D12',
+    '#65A30D','#0891B2','#0EA5E9','#A855F7','#DB2777','#4F46E5'];
+  const _catColorCache = {};
+  function catColor(cat){
+    if(_catColorCache[cat]) return _catColorCache[cat];
+    let c = CAT_COLORS[cat];
+    if(!c){
+      // tolerate GL-code drift: strip a leading numeric code and retry
+      const stripped = String(cat).replace(/^[0-9]+[\s\-]*/, '').trim();
+      const lower = stripped.toLowerCase();
+      const hit = Object.keys(CAT_COLORS).find(k =>
+        k.replace(/^[0-9]+[\s\-]*/, '').trim().toLowerCase() === lower);
+      c = hit ? CAT_COLORS[hit] : null;
+    }
+    if(!c){
+      let hash = 0;
+      for(let i=0;i<String(cat).length;i++) hash = (hash*31 + String(cat).charCodeAt(i)) | 0;
+      c = FALLBACK_PALETTE[Math.abs(hash) % FALLBACK_PALETTE.length];
+    }
+    _catColorCache[cat] = c;
+    return c;
+  }
   const opexByMonth = {};
   ALL_MONTHS.forEach(m => opexByMonth[m.key] = {});
   if(typeof opexData !== 'undefined'){
@@ -2484,8 +2528,8 @@ moduleBoot();
     const opexDatasets = activeCats.map(cat => ({
       label: cat,
       data: months.map(m => Math.round((opexByMonth[m.key]||{})[cat]||0)),
-      backgroundColor: stripePattern(CAT_COLORS[cat] || '#57534E'),
-      borderColor: CAT_COLORS[cat] || '#57534E',
+      backgroundColor: catColor(cat),
+      borderColor: catColor(cat),
       borderWidth: 1,
       stack: 'opex',
       yAxisID: 'y1',
@@ -2523,7 +2567,7 @@ moduleBoot();
       {label:'Uncollected', color:'#B91C1C'},
       ...(capexToggleOn ? [{label:'CapEx Investment (inverted axis)', color:'#a78bfa', line:true, dashed:true}] : [])
     ];
-    const row2Items = activeCats.map(cat => ({label:cat, color: CAT_COLORS[cat] || '#57534E', striped:true}));
+    const row2Items = activeCats.map(cat => ({label:cat, color: catColor(cat), striped:false}));
 
     function renderLegendRow(elId, items){
       const el = document.getElementById(elId); if(!el) return;
