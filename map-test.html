@@ -1714,6 +1714,7 @@ function clearCreds(){
 const SYNC_ON = ()=>GIST_TOKEN.length>10 && GIST_ID.length>5;
 
 // First-time / settings prompt for cloud sync credentials
+window.promptCreds = promptCreds;
 function promptCreds(force){
   if(SYNC_ON()&&!force)return;
   const curTok=GIST_TOKEN, curId=GIST_ID;
