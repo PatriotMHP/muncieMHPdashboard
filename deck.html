@@ -165,6 +165,7 @@ h2.title{font-family:Cambria,Georgia,serif;font-size:2.15rem;font-weight:700;col
   <div class="toolbar">
     <h1>Patriot MHP — Investor Deck</h1>
     <span id="dataStatus" class="status-pill baseline">Baseline data</span>
+    <button class="btn ghost" onclick="deckSyncSetup()">☁ Sync setup</button>
     <button class="btn ghost" onclick="refreshData()">↻ Refresh from dashboard</button>
     <button class="btn" onclick="window.print()">⤓ Save as PDF</button>
   </div>
@@ -460,12 +461,26 @@ async function fetchGist(){
   return r.json();
 }
 
+function deckSyncSetup(){
+  let cur='';
+  try{ const r=localStorage.getItem('mhp-v2-cred'); if(r) cur=JSON.parse(r).token||''; }catch(e){}
+  const t=window.prompt('Paste your GitHub token (Gists read+write):', cur);
+  if(t===null) return;
+  const g=window.prompt('Gist ID:', GIST_ID);
+  if(g===null) return;
+  if(t.trim().length>10 && g.trim().length>5){
+    try{ localStorage.setItem('mhp-v2-cred', JSON.stringify({token:t.trim(), gid:g.trim()})); }catch(e){}
+    refreshData();
+  }
+}
+window.deckSyncSetup = deckSyncSetup;
+
 async function refreshData(){
   const pill=document.getElementById('dataStatus');
   const tok=getToken();
   if(tok.length<10){
     pill.className='status-pill err';
-    pill.textContent='No sync token — open the dashboard first';
+    pill.textContent='No sync token — click ☁ Sync setup';
     return;
   }
   pill.className='status-pill baseline'; pill.textContent='Loading…';
