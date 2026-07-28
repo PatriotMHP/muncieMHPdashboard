@@ -131,6 +131,7 @@ h2.title{font-family:Cambria,Georgia,serif;font-size:2.15rem;font-weight:700;col
 .pipe .pi:last-child{border-bottom:none}
 .pipe .cnt{font-family:Cambria,serif;font-size:1.5rem;font-weight:700;color:var(--barn);min-width:38px}
 .pipe .pt{font-size:.92rem}.pipe .pt b{color:var(--navy)}
+.pipe .pi-rent{margin-left:auto;font-family:Cambria,serif;font-weight:700;color:#1f7a4d;font-size:.95rem;white-space:nowrap;padding-left:12px}
 
 /* footer tag on light slides */
 .foot{position:absolute;bottom:22px;left:60px;right:60px;display:flex;justify-content:space-between;
@@ -362,7 +363,9 @@ const DECK = {
     { pct: "auto", when: "Current", now: true }   // "auto" → live total occupancy %
   ],
   leasesSigned:     "auto",   // or type a number like "8"
-  waitlist:         "5",      // qualified waitlist (edit as it changes)
+  evictionsProcessed: "auto", // total tenants removed — pulled live from moveout-history.json (Bye-Bye List) on Refresh
+  evictionsPending:   "auto", // or type a number
+  waitlist:         "7",      // qualified waitlist (edit as it changes)
 
   // --- Slide 3: Strategy shift ---
   strategyLead: "We're now selling Handy-Man Specials rather than routing those units through full Phase 2 rehabs — filling pads faster with little to no CapEx.",
@@ -374,13 +377,14 @@ const DECK = {
   bankReason3: "<b>Faster stabilized NOI.</b> Quicker occupancy pulls forward the $120–130K NOI target that unlocks the LOC.",
   // Forthcoming leases pipeline (edit counts + labels freely)
   pipeline: [
-    { count: "4",   label: "<b>Handy-Man Specials</b> — sold to tenants, minimal CapEx" },
-    { count: "2–3", label: "<b>Rehabbed POHs</b> — completed and lease-ready" },
-    { count: "1",   label: "<b>Commercial building</b> — new income stream" }
+    // 'rent' is optional per line — additional monthly lot rent this line brings in
+    { count: "4",   label: "<b>Handy-Man Specials</b> — sold to tenants, minimal CapEx",  rent: "4 x $450/mo. = $1,800/mo." },
+    { count: "3",   label: "<b>Rehabbed POHs</b> — completed and lease-ready",             rent: "$2,650/mo. total" },
+    { count: "1",   label: "<b>Commercial building</b> — new income stream",               rent: "$600/mo." }
   ],
 
   // --- Slide 4: CapEx & financials (numbers auto; deltas editable) ---
-  rehabsCompleted: "auto",  // or a number
+  rehabsCompleted: "7",  // or "auto" to pull from tile lanes (leased-pohs + rehab-complete)
   rehabsInProgress:"auto",
   capexYTD:        "auto",  // pulls from capex-transactions if available
   rentRoll:        "auto",  // pulls from rm-data / occupancy-history if available
@@ -428,7 +432,7 @@ let OPEX = {};
 // Derived stat baselines from current tile data snapshot:
 let STATS = {
   leasesSigned: 8,          // per Q2 notes (running total since close)
-  evictionsProcessed: 3,    // vacated / removed
+  evictionsProcessed: 8,    // vacated / removed (Bye-Bye List running total)
   evictionsPending: 3,      // still occupied, in process (R-6,R-9,R-23,R-30,R-31 minus vacated)
   rehabsCompleted: 8,       // leased-pohs(7) + rehab-complete(1)
   rehabsInProgress: 3,      // in-rehab lane
@@ -507,6 +511,11 @@ async function refreshData(){
       const md=JSON.parse(files['mhp-data.json'].content);
       applyTiles(md);
     }
+    // moveout-history.json → evictions processed (Bye-Bye List)
+    if(files['moveout-history.json']?.content){
+      const mo=JSON.parse(files['moveout-history.json'].content);
+      applyMoveouts(mo);
+    }
     render();
     pill.className='status-pill live'; pill.textContent='Live data ✓';
   }catch(e){
@@ -530,6 +539,12 @@ function applyOccupancy(oh){
     };
   });
   if(Object.keys(next).length) OCC=next;
+  // diagnostic: if every month resolved to 0 occupancy, the live JSON's field names
+  // likely don't match toh/tohOcc/poh/pohOcc — check the console for the raw sample row.
+  const allZero=Object.values(OCC).every(d=>!d.toh && !d.poh);
+  if(allZero && Array.isArray(oh) && oh.length){
+    console.warn('[deck] occupancy-history.json loaded but toh/poh all resolved to 0 — check field names. Sample row:', oh[0]);
+  }
 }
 
 /* map payables-history into OPEX + latest opex figure */
@@ -557,6 +572,24 @@ function applyTiles(md){
   STATS.rehabsInProgress=tiles.filter(t=>t.lane==='in-rehab').length;
 }
 
+/* map live moveout-history (Bye-Bye List) into evictions-processed count.
+   Tolerant of two shapes:
+     - array of individual removal records, e.g. [{month,unit,reason}, ...] → count = length
+     - object keyed by month → array of records, e.g. {"2026-03":[{unit:"R-2"},...]} → count = sum of lengths */
+function applyMoveouts(mo){
+  let count=null;
+  if(Array.isArray(mo)){
+    count=mo.length;
+  }else if(mo && typeof mo==='object'){
+    count=Object.values(mo).reduce((sum,v)=>sum+(Array.isArray(v)?v.length:0),0);
+  }
+  if(count==null){
+    console.warn('[deck] moveout-history.json loaded but shape not recognized — evictionsProcessed left as-is.', mo);
+    return;
+  }
+  STATS.evictionsProcessed=count;
+}
+
 /* ---------- render ---------- */
 function render(){
   // logo
@@ -581,8 +614,8 @@ function render(){
     traj.appendChild(d);
   });
   document.getElementById('s2_leases').textContent=pick(DECK.leasesSigned,STATS.leasesSigned);
-  document.getElementById('s2_evproc').textContent=STATS.evictionsProcessed;
-  document.getElementById('s2_evpend').textContent=STATS.evictionsPending;
+  document.getElementById('s2_evproc').textContent=pick(DECK.evictionsProcessed,STATS.evictionsProcessed);
+  document.getElementById('s2_evpend').textContent=pick(DECK.evictionsPending,STATS.evictionsPending);
   document.getElementById('s2_waitlist').textContent=DECK.waitlist;
 
   // Slide 3
@@ -596,7 +629,8 @@ function render(){
   const pipe=document.getElementById('s3_pipe'); pipe.innerHTML='';
   DECK.pipeline.forEach(p=>{
     const el=document.createElement('div'); el.className='pi';
-    el.innerHTML=`<span class="cnt">${p.count}</span><span class="pt">${p.label}</span>`;
+    const rentHTML = p.rent ? `<span class="pi-rent">${p.rent}</span>` : '';
+    el.innerHTML=`<span class="cnt">${p.count}</span><span class="pt">${p.label}</span>${rentHTML}`;
     pipe.appendChild(el);
   });
 
@@ -632,9 +666,10 @@ function render(){
 
 /* ---------- chart (mirrors dashboard Historical Performance) ---------- */
 let chartInstance=null;
+const CHART_START_MONTH='2025-12'; // first month shown on the Historical Performance chart
 function buildChart(){
   if(typeof Chart==='undefined'){ setTimeout(buildChart,120); return; }
-  const months=Object.keys(OCC).sort();
+  const months=Object.keys(OCC).sort().filter(m=>m>=CHART_START_MONTH);
   const labels=months.map(MONTH_LABEL);
   const totalPct=months.map(m=>{const d=OCC[m];return d?+(((d.toh+d.poh)/TOTAL_PADS)*100).toFixed(1):null;});
   const tohPct=months.map(m=>{const d=OCC[m];return d?+((d.toh/TOTAL_PADS)*100).toFixed(1):null;});
