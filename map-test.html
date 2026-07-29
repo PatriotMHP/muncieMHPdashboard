@@ -2371,6 +2371,19 @@ moduleBoot();
   const OCC_FILE = 'occupancy-history.json';
   const PAYABLES_FILE = 'payables-history.json';
   const MOVEOUT_FILE = 'moveout-history.json';
+  const RENT_HIST_FILE = 'rent-history.json';
+  async function fetchRentHistory(){
+    const tok = getOccToken();
+    if(tok.length<10) return null;
+    try{
+      const r = await fetch(`https://api.github.com/gists/${OCC_GIST_ID}`, {headers:{Authorization:`Bearer ${tok}`, Accept:'application/vnd.github+json'}});
+      if(!r.ok) return null;
+      const g = await r.json();
+      const f = g.files && g.files[RENT_HIST_FILE];
+      if(!f || !f.content) return null;
+      return JSON.parse(f.content);
+    }catch(e){ console.warn('Rent history fetch failed', e); return null; }
+  }
   // Baseline bad-tenant removals by month (evictions / non-payment / lease
   // violations). Voluntary turnover is tracked separately and NOT counted here.
   // Overwritten by moveout-history.json from the gist when available.
@@ -2427,20 +2440,20 @@ moduleBoot();
     }catch(e){ console.warn('CapEx transactions fetch failed', e); return null; }
   }
 
-  // ---- RAW DATA (placeholder for rent roll/collected until Charges & Receipts is live) ----
+  // ---- RAW DATA — seeded from Summary Rent Roll exports (real RM data) ----
+  // Rent figures: total_charged → rentRoll, total_paid → collected.
+  // Occupancy fields here are approximate; overwritten by occupancy-history.json on load.
   const DATA = {
-    '2025-08':{amOcc:1,rwOcc:0,tohOcc:0,pohOcc:1,rentRoll:2000,collected:2000},
-    '2025-09':{amOcc:1,rwOcc:0,tohOcc:0,pohOcc:1,rentRoll:2000,collected:2000},
-    '2025-10':{amOcc:1,rwOcc:0,tohOcc:0,pohOcc:1,rentRoll:2000,collected:2000},
-    '2025-11':{amOcc:1,rwOcc:0,tohOcc:0,pohOcc:1,rentRoll:2000,collected:2000},
-    '2025-12':{amOcc:5,rwOcc:10,tohOcc:13,pohOcc:2,rentRoll:7000,collected:6200},
-    '2026-01':{amOcc:5,rwOcc:10,tohOcc:13,pohOcc:2,rentRoll:7200,collected:5800},
-    '2026-02':{amOcc:7,rwOcc:14,tohOcc:16,pohOcc:5,rentRoll:7500,collected:6500},
-    '2026-03':{amOcc:7,rwOcc:14,tohOcc:15,pohOcc:6,rentRoll:8000,collected:7200},
-    '2026-04':{amOcc:7,rwOcc:14,tohOcc:16,pohOcc:5,rentRoll:8500,collected:7800},
-    '2026-05':{amOcc:6,rwOcc:16,tohOcc:17,pohOcc:5,rentRoll:9000,collected:8200},
-    '2026-06':{amOcc:6,rwOcc:17,tohOcc:17,pohOcc:6,rentRoll:9500,collected:8500},
-    '2026-07':{amOcc:6,rwOcc:16,tohOcc:17,pohOcc:5,rentRoll:9625,collected:0}
+    '2025-10':{amOcc:1,rwOcc:0,tohOcc:0,pohOcc:0,rentRoll:1400.0,collected:2100.0},
+    '2025-11':{amOcc:5,rwOcc:10,tohOcc:0,pohOcc:0,rentRoll:5550.0,collected:2560.0},
+    '2025-12':{amOcc:5,rwOcc:10,tohOcc:0,pohOcc:0,rentRoll:15225.0,collected:6435.0},
+    '2026-01':{amOcc:7,rwOcc:14,tohOcc:0,pohOcc:0,rentRoll:20715.0,collected:13320.0},
+    '2026-02':{amOcc:7,rwOcc:15,tohOcc:0,pohOcc:0,rentRoll:16450.0,collected:12265.0},
+    '2026-03':{amOcc:7,rwOcc:16,tohOcc:0,pohOcc:0,rentRoll:18550.0,collected:15565.0},
+    '2026-04':{amOcc:7,rwOcc:18,tohOcc:0,pohOcc:0,rentRoll:21455.0,collected:14750.0},
+    '2026-05':{amOcc:6,rwOcc:17,tohOcc:0,pohOcc:0,rentRoll:21200.0,collected:14565.0},
+    '2026-06':{amOcc:6,rwOcc:17,tohOcc:0,pohOcc:0,rentRoll:23190.0,collected:16650.0},
+    '2026-07':{amOcc:6,rwOcc:17,tohOcc:0,pohOcc:0,rentRoll:11425.0,collected:8270.0}
   };
   let occDataLoaded = false;
 
@@ -2710,6 +2723,24 @@ moduleBoot();
       console.log('Real occupancy history loaded from gist:', real.length, 'months');
     } else {
       console.log('Occupancy history not available yet — using placeholder occupancy figures');
+    }
+  })();
+
+  // Fetch real rent history from gist and overlay it
+  (async function loadRealRentHistory(){
+    const real = await fetchRentHistory();
+    if(real && Array.isArray(real) && real.length){
+      real.forEach(entry => {
+        if(!DATA[entry.month]) DATA[entry.month] = {amOcc:0,rwOcc:0,tohOcc:0,pohOcc:0,rentRoll:0,collected:0};
+        DATA[entry.month].rentRoll = entry.total_charged || 0;
+        DATA[entry.month].collected = entry.total_paid || 0;
+        if(typeof entry.american_occupied === 'number') DATA[entry.month].amOcc = entry.american_occupied;
+        if(typeof entry.redwood_occupied === 'number') DATA[entry.month].rwOcc = entry.redwood_occupied;
+      });
+      buildChart();
+      console.log('Real rent history loaded from gist:', real.length, 'months');
+    } else {
+      console.log('Rent history not available yet — using seed figures from Summary Rent Roll exports');
     }
   })();
 
