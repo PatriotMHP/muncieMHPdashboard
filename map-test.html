@@ -2441,19 +2441,21 @@ moduleBoot();
   }
 
   // ---- RAW DATA — seeded from Summary Rent Roll exports (real RM data) ----
-  // Rent figures: total_charged → rentRoll, total_paid → collected.
-  // Occupancy fields here are approximate; overwritten by occupancy-history.json on load.
+  // rentDue = actual monthly rent for occupied units (from RM rent roll rates)
+  // collected = rent paid, capped at rentDue (green bar)
+  // uncollected = rentDue - collected when short (red bar)
+  // overpay = collections exceeding rentDue, from back-balance catch-up (white-gold bar)
   const DATA = {
-    '2025-10':{amOcc:1,rwOcc:0,tohOcc:0,pohOcc:0,rentRoll:1400.0,collected:2100.0},
-    '2025-11':{amOcc:5,rwOcc:10,tohOcc:0,pohOcc:0,rentRoll:5550.0,collected:2560.0},
-    '2025-12':{amOcc:5,rwOcc:10,tohOcc:0,pohOcc:0,rentRoll:15225.0,collected:6435.0},
-    '2026-01':{amOcc:7,rwOcc:14,tohOcc:0,pohOcc:0,rentRoll:20715.0,collected:13320.0},
-    '2026-02':{amOcc:7,rwOcc:15,tohOcc:0,pohOcc:0,rentRoll:16450.0,collected:12265.0},
-    '2026-03':{amOcc:7,rwOcc:16,tohOcc:0,pohOcc:0,rentRoll:18550.0,collected:15565.0},
-    '2026-04':{amOcc:7,rwOcc:18,tohOcc:0,pohOcc:0,rentRoll:21455.0,collected:14750.0},
-    '2026-05':{amOcc:6,rwOcc:17,tohOcc:0,pohOcc:0,rentRoll:21200.0,collected:14565.0},
-    '2026-06':{amOcc:6,rwOcc:17,tohOcc:0,pohOcc:0,rentRoll:23190.0,collected:16650.0},
-    '2026-07':{amOcc:6,rwOcc:17,tohOcc:0,pohOcc:0,rentRoll:11425.0,collected:8270.0}
+    '2025-10':{amOcc:1,rwOcc:0,tohOcc:0,pohOcc:0,rentDue:1000,collected:1000,uncollected:0,overpay:1100.0},
+    '2025-11':{amOcc:5,rwOcc:10,tohOcc:0,pohOcc:0,rentDue:6725.0,collected:2560.0,uncollected:4165.0,overpay:0},
+    '2025-12':{amOcc:5,rwOcc:10,tohOcc:0,pohOcc:0,rentDue:6825.0,collected:6435.0,uncollected:390.0,overpay:0},
+    '2026-01':{amOcc:7,rwOcc:14,tohOcc:0,pohOcc:0,rentDue:10075.0,collected:10075.0,uncollected:0,overpay:3245.0},
+    '2026-02':{amOcc:7,rwOcc:15,tohOcc:0,pohOcc:0,rentDue:10475.0,collected:10475.0,uncollected:0,overpay:1790.0},
+    '2026-03':{amOcc:7,rwOcc:16,tohOcc:0,pohOcc:0,rentDue:11475.0,collected:11475.0,uncollected:0,overpay:4090.0},
+    '2026-04':{amOcc:7,rwOcc:18,tohOcc:0,pohOcc:0,rentDue:13475.0,collected:13475.0,uncollected:0,overpay:1275.0},
+    '2026-05':{amOcc:6,rwOcc:17,tohOcc:0,pohOcc:0,rentDue:12175.0,collected:12175.0,uncollected:0,overpay:2390.0},
+    '2026-06':{amOcc:6,rwOcc:17,tohOcc:0,pohOcc:0,rentDue:11925.0,collected:11925.0,uncollected:0,overpay:4725.0},
+    '2026-07':{amOcc:6,rwOcc:17,tohOcc:0,pohOcc:0,rentDue:11125.0,collected:8270.0,uncollected:2855.0,overpay:0}
   };
   let occDataLoaded = false;
 
@@ -2589,8 +2591,9 @@ moduleBoot();
     const tohCounts = months.map(m => { const d=DATA[m.key]; return d ? d.tohOcc : null; });
 
     // Revenue bars (right Y axis, $) — stacked: collected (green) + gap (red)
-    const collected = months.map(m => { const d=DATA[m.key]; return d ? d.collected : 0; });
-    const gap = months.map(m => { const d=DATA[m.key]; return d ? Math.max(0, d.rentRoll - d.collected) : 0; });
+    const collected = months.map(m => { const d=DATA[m.key]; return d ? (d.collected||0) : 0; });
+    const uncollected = months.map(m => { const d=DATA[m.key]; return d ? (d.uncollected||0) : 0; });
+    const overpay = months.map(m => { const d=DATA[m.key]; return d ? (d.overpay||0) : 0; });
 
     // OpEx stacked bars (right Y axis, $) — one dataset per category
     const opexDatasets = activeCats.map(cat => ({
@@ -2613,7 +2616,8 @@ moduleBoot();
     const datasets = [
       // Revenue bars
       {label:'Rent Collected', data:collected, backgroundColor:'#15803D', stack:'revenue', yAxisID:'y1', barPercentage:0.5, categoryPercentage:0.8, order:2, type:'bar'},
-      {label:'Uncollected', data:gap, backgroundColor:'#B91C1C', stack:'revenue', yAxisID:'y1', barPercentage:0.5, categoryPercentage:0.8, order:2, type:'bar'},
+      {label:'Uncollected', data:uncollected, backgroundColor:'#B91C1C', stack:'revenue', yAxisID:'y1', barPercentage:0.5, categoryPercentage:0.8, order:2, type:'bar'},
+      {label:'Back-balance payments', data:overpay, backgroundColor:'rgba(255,255,255,0.85)', borderColor:'#C99A3A', borderWidth:1.5, stack:'revenue', yAxisID:'y1', barPercentage:0.5, categoryPercentage:0.8, order:2, type:'bar'},
       // OpEx stacked bars
       ...opexDatasets.map(d => ({...d, type:'bar'})),
       // Occupancy lines
@@ -2639,6 +2643,7 @@ moduleBoot();
       {label:'Tenants Removed', color:'#e0403f', line:true},
       {label:'Rent Collected', color:'#15803D'},
       {label:'Uncollected', color:'#B91C1C'},
+      {label:'Back-balance payments', color:'#C99A3A'},
       ...(capexToggleOn ? [{label:'CapEx Investment (inverted axis)', color:'#a78bfa', line:true, dashed:true}] : [])
     ];
     const row2Items = activeCats.map(cat => ({label:cat, color: catColor(cat), striped:true}));
@@ -2685,6 +2690,7 @@ moduleBoot();
                   }
                   return ctx.dataset.label+': '+ctx.raw+'%';
                 }
+                if(ctx.dataset.label === 'Back-balance payments') return 'Back-balance payments: $'+Number(ctx.raw).toLocaleString();
                 if(ctx.dataset.label === 'Tenants Removed') return 'Tenants removed: '+ctx.raw+(ctx.raw===1?' (eviction/violation)':' (evictions/violations)');
                 if(ctx.dataset.label === 'CapEx Investment') return 'CapEx Investment: $'+Number(ctx.raw).toLocaleString();
                 return ctx.dataset.label+': $'+Number(ctx.raw).toLocaleString();
@@ -2732,8 +2738,10 @@ moduleBoot();
     if(real && Array.isArray(real) && real.length){
       real.forEach(entry => {
         if(!DATA[entry.month]) DATA[entry.month] = {amOcc:0,rwOcc:0,tohOcc:0,pohOcc:0,rentRoll:0,collected:0};
-        DATA[entry.month].rentRoll = entry.total_charged || 0;
-        DATA[entry.month].collected = entry.total_paid || 0;
+        DATA[entry.month].rentDue = entry.rent_due || 0;
+        DATA[entry.month].collected = entry.bar_collected || 0;
+        DATA[entry.month].uncollected = entry.bar_uncollected || 0;
+        DATA[entry.month].overpay = entry.bar_overpay || 0;
         if(typeof entry.american_occupied === 'number') DATA[entry.month].amOcc = entry.american_occupied;
         if(typeof entry.redwood_occupied === 'number') DATA[entry.month].rwOcc = entry.redwood_occupied;
       });
