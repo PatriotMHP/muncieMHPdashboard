@@ -226,6 +226,30 @@ h2.title{font-family:Cambria,Georgia,serif;font-size:2.15rem;font-weight:700;col
   </section>
 
   <!-- ============================================================
+       SLIDE 2B — WHAT'S WORKING / CHALLENGES
+       ============================================================ -->
+  <section class="slide" id="s2b">
+    <div class="slide-inner">
+      <div class="eyebrow">Operating Report</div>
+      <h2 class="title">What's working &middot; where we're navigating challenges</h2>
+      <div class="subtle">A candid look at wins and headwinds through the quarter</div>
+
+      <div class="cols">
+        <div class="panel">
+          <h3 style="color:#1f7a4d">What's working well</h3>
+          <div id="s2b_wins"><!-- filled by engine --></div>
+        </div>
+        <div class="panel">
+          <h3 style="color:var(--barn)">Challenges we're managing</h3>
+          <div id="s2b_challenges"><!-- filled by engine --></div>
+        </div>
+      </div>
+
+      <div class="foot"><span>Patriot Mobile Home Parks LLC</span><span class="pg">03</span></div>
+    </div>
+  </section>
+
+  <!-- ============================================================
        SLIDE 3 — STRATEGY SHIFT + FORTHCOMING LEASES
        ============================================================ -->
   <section class="slide" id="s3">
@@ -255,7 +279,7 @@ h2.title{font-family:Cambria,Georgia,serif;font-size:2.15rem;font-weight:700;col
         </div>
       </div>
 
-      <div class="foot"><span>Patriot Mobile Home Parks LLC</span><span class="pg">03</span></div>
+      <div class="foot"><span>Patriot Mobile Home Parks LLC</span><span class="pg">04</span></div>
     </div>
   </section>
 
@@ -286,7 +310,7 @@ h2.title{font-family:Cambria,Georgia,serif;font-size:2.15rem;font-weight:700;col
           <div class="d flat" id="s4_opex_d">—</div></div>
       </div>
 
-      <div class="foot"><span>Figures refresh from live dashboard data</span><span class="pg">04</span></div>
+      <div class="foot"><span>Figures refresh from live dashboard data</span><span class="pg">05</span></div>
     </div>
   </section>
 
@@ -302,7 +326,7 @@ h2.title{font-family:Cambria,Georgia,serif;font-size:2.15rem;font-weight:700;col
         <div style="position:relative;height:340px"><canvas id="deckChart"></canvas></div>
         <div class="chart-note" id="s5_note">Occupancy % (lines, left axis) against rent collected and operating expenses ($, right axis).</div>
       </div>
-      <div class="foot"><span>Patriot Mobile Home Parks LLC</span><span class="pg">05</span></div>
+      <div class="foot"><span>Patriot Mobile Home Parks LLC</span><span class="pg">06</span></div>
     </div>
   </section>
 
@@ -352,7 +376,7 @@ const DECK = {
   title:    "Patriot Mobile Home Parks",
   subtitle: "Redwood & American Parks · Muncie, IN",
   quarter:  "Q3 2026 Update",
-  date:     "July 2026",
+  date:     "August 2026",
 
   // --- Slide 2: Key updates (numbers auto-fill; text is editable) ---
   occupancySubtitle: "Steady lease-up since the November 2025 close",
@@ -367,6 +391,26 @@ const DECK = {
   evictionsPending:   "auto", // or type a number
   waitlist:         "7",      // qualified waitlist (edit as it changes)
 
+  /* ------- WINS & CHALLENGES (new slide, sits between Occupancy and Strategy) ------- */
+  // The tenant comparison is rendered inline in the first wins bullet.
+  // Edit these numbers with real figures before the call:
+  tenantsNew:       { collections: "XX%", tenure: "XX months" },      // EDIT — new-tenant cohort
+  tenantsInherited: { collections: "XX%", tenure: "XX months" },      // EDIT — inherited tenants
+
+  wins: [
+    // The first line auto-fills the tenant comparison numbers above.
+    "<b>Better tenants.</b> New-tenant cohort at {NEW_COLL} on-time collections vs {INH_COLL} inherited; average tenure {NEW_TEN} vs {INH_TEN}.",
+    "<b>Strong demand.</b> No shortage of qualified applicants — units fill as soon as they come to market.",
+    "<b>Rehabs on budget.</b> Completed units tracking within ±5% of projected costs.",
+    "<b>Tighter operations.</b> Stricter tenant screening and lease enforcement now standard."
+  ],
+  challenges: [
+    "<b>Rehab timing.</b> Contractor availability delayed early-year rehabs; timing has since normalized.",
+    "<b>Demo scope larger than DD.</b> Projected 2–3 unsalvageable units at diligence; now 6 across both parks.",
+    "<b>American water testing.</b> Muncie Health Dept mandate is running ~$1K/month — water quality itself has always tested fine.",
+    "<b>Redwood city demo order.</b> City issued a demo order on several Redwood units; overlaps our own demo list but also affects a few Handy-Man Specials in progress."
+  ],
+
   // --- Slide 3: Strategy shift ---
   strategyLead: "We're now selling Handy-Man Specials rather than routing those units through full Phase 2 rehabs — filling pads faster with little to no CapEx.",
   strategyWhy1: "Homes go occupied in weeks, not months, so occupancy climbs ahead of the LOC timeline.",
@@ -378,7 +422,7 @@ const DECK = {
   // Forthcoming leases pipeline (edit counts + labels freely)
   pipeline: [
     // 'rent' is optional per line — additional monthly lot rent this line brings in
-    { count: "4",   label: "<b>Handy-Man Specials</b> — sold to tenants, minimal CapEx",  rent: "4 x $450/mo. = $1,800/mo." },
+    { count: "2–3", label: "<b>Handy-Man Specials</b> — sold to tenants, minimal CapEx",  rent: "2–3 x $450/mo. = $900–$1,350/mo." },
     { count: "3",   label: "<b>Rehabbed POHs</b> — completed and lease-ready",             rent: "$2,650/mo. total" },
     { count: "1",   label: "<b>Commercial building</b> — new income stream",               rent: "$600/mo." }
   ],
@@ -416,16 +460,16 @@ const TOTAL_PADS = 63;
 
 // ---- BASELINE DATA (real, from your Q1/Q2 decks + tile snapshot) ----
 // Overwritten by live Gist data on Refresh.
-let OCC = {  // occupancy by month: total pads occupied, split TOH/POH
-  '2025-11':{toh:1,poh:0,rentRoll:2000,collected:2000},
-  '2025-12':{toh:13,poh:2,rentRoll:7000,collected:6200},
-  '2026-01':{toh:13,poh:2,rentRoll:7200,collected:5800},
-  '2026-02':{toh:16,poh:5,rentRoll:7500,collected:6500},
-  '2026-03':{toh:15,poh:6,rentRoll:8000,collected:7200},
-  '2026-04':{toh:16,poh:5,rentRoll:8500,collected:7800},
-  '2026-05':{toh:17,poh:5,rentRoll:9000,collected:8200},
-  '2026-06':{toh:17,poh:6,rentRoll:9500,collected:8500},
-  '2026-07':{toh:16,poh:5,rentRoll:9625,collected:8600}
+let OCC = {  // occupancy by month: occupiedPct = total occupied % of 63 pads
+  '2025-11':{occupiedPct:1.6,  rentRoll:2000,collected:2000},
+  '2025-12':{occupiedPct:23.8, rentRoll:7000,collected:6200},
+  '2026-01':{occupiedPct:23.8, rentRoll:7200,collected:5800},
+  '2026-02':{occupiedPct:33.3, rentRoll:7500,collected:6500},
+  '2026-03':{occupiedPct:33.3, rentRoll:8000,collected:7200},
+  '2026-04':{occupiedPct:33.3, rentRoll:8500,collected:7800},
+  '2026-05':{occupiedPct:34.9, rentRoll:9000,collected:8200},
+  '2026-06':{occupiedPct:36.5, rentRoll:9500,collected:8500},
+  '2026-07':{occupiedPct:33.3, rentRoll:9625,collected:8600}
 };
 // OpEx by month by category (baseline placeholder; replaced by payables-history)
 let OPEX = {};
@@ -529,22 +573,18 @@ function applyOccupancy(oh){
   if(!Array.isArray(oh)) return;
   const next={};
   oh.forEach(row=>{
-    const key=row.month||row.date?.slice(0,7);
+    const key=row.month;
     if(!key) return;
+    const totalPads=row.total_pads||TOTAL_PADS;
     next[key]={
-      toh: row.toh ?? row.tohOcc ?? 0,
-      poh: row.poh ?? row.pohOcc ?? 0,
+      occupiedPct: row.occupied_pct ?? (((row.occupied_avg??0)/totalPads)*100),
+      // rentRoll/collected aren't in occupancy-history.json — these still fall back to
+      // whatever was last known (baseline or a prior live fetch) until rm-data.json is wired in too.
       rentRoll: row.rentRoll ?? row.rent_roll ?? OCC[key]?.rentRoll ?? 0,
       collected: row.collected ?? OCC[key]?.collected ?? 0
     };
   });
   if(Object.keys(next).length) OCC=next;
-  // diagnostic: if every month resolved to 0 occupancy, the live JSON's field names
-  // likely don't match toh/tohOcc/poh/pohOcc — check the console for the raw sample row.
-  const allZero=Object.values(OCC).every(d=>!d.toh && !d.poh);
-  if(allZero && Array.isArray(oh) && oh.length){
-    console.warn('[deck] occupancy-history.json loaded but toh/poh all resolved to 0 — check field names. Sample row:', oh[0]);
-  }
 }
 
 /* map payables-history into OPEX + latest opex figure */
@@ -619,6 +659,19 @@ function render(){
   document.getElementById('s2_waitlist').textContent=DECK.waitlist;
 
   // Slide 3
+  // slide 2b — wins & challenges
+  const rowHtml=text=>`<div class="row"><div class="dot">◆</div><div class="rtxt">${text}</div></div>`;
+  // any placeholder value containing "XX" gets wrapped in barn red so it stands out as unedited.
+  const hl=v=>/XX/.test(v)?`<span style="color:var(--barn);font-weight:700">${v}</span>`:v;
+  const fillTenantPlaceholders=s=>s
+    .replace('{NEW_COLL}', hl(DECK.tenantsNew.collections))
+    .replace('{INH_COLL}', hl(DECK.tenantsInherited.collections))
+    .replace('{NEW_TEN}', hl(DECK.tenantsNew.tenure))
+    .replace('{INH_TEN}', hl(DECK.tenantsInherited.tenure));
+  document.getElementById('s2b_wins').innerHTML=DECK.wins.map(w=>rowHtml(fillTenantPlaceholders(w))).join('');
+  document.getElementById('s2b_challenges').innerHTML=DECK.challenges.map(c=>rowHtml(c)).join('');
+
+  // slide 3
   document.getElementById('s3_lead').textContent=DECK.strategyLead;
   document.getElementById('s3_why1').textContent=DECK.strategyWhy1;
   document.getElementById('s3_why2').textContent=DECK.strategyWhy2;
@@ -638,17 +691,20 @@ function render(){
   document.getElementById('s4_completed').textContent=pick(DECK.rehabsCompleted,STATS.rehabsCompleted);
   document.getElementById('s4_inrehab').textContent=pick(DECK.rehabsInProgress,STATS.rehabsInProgress);
   document.getElementById('s4_capex').textContent=pick(DECK.capexYTD, moneyK(STATS.capexYTD));
+  // pick the latest month that actually has revenue data (not just the last key in OCC,
+  // which may now include newer months from occupancy-history.json where rentRoll is 0).
   const months=Object.keys(OCC).sort();
-  const last=months[months.length-1];
-  const lastData=OCC[last]||{};
+  const lastRevMonth=[...months].reverse().find(m=>OCC[m]?.rentRoll>0);
+  const lastOpexMonth=[...months].reverse().find(m=>OPEX[m]&&Object.keys(OPEX[m]).length>0);
+  const lastData=OCC[lastRevMonth]||{};
   document.getElementById('s4_rentroll').textContent=pick(DECK.rentRoll, money(lastData.rentRoll||0)+'/mo');
   document.getElementById('s4_rentroll_d').textContent=DECK.rentRollDelta;
   const collPct=lastData.rentRoll?Math.round((lastData.collected/lastData.rentRoll)*100):0;
   document.getElementById('s4_coll').textContent=pick(DECK.collections, collPct+'%');
   document.getElementById('s4_coll_d').textContent=DECK.collectionsDelta;
-  // opex: sum latest month categories if available
+  // opex: sum latest month with actual category data
   let opexVal='—';
-  if(OPEX[last]) opexVal=money(Object.values(OPEX[last]).reduce((a,b)=>a+b,0))+'/mo';
+  if(lastOpexMonth) opexVal=money(Object.values(OPEX[lastOpexMonth]).reduce((a,b)=>a+b,0))+'/mo';
   document.getElementById('s4_opex').textContent=pick(DECK.opex, opexVal);
   document.getElementById('s4_opex_d').textContent=DECK.opexDelta;
 
@@ -669,11 +725,11 @@ let chartInstance=null;
 const CHART_START_MONTH='2025-12'; // first month shown on the Historical Performance chart
 function buildChart(){
   if(typeof Chart==='undefined'){ setTimeout(buildChart,120); return; }
-  const months=Object.keys(OCC).sort().filter(m=>m>=CHART_START_MONTH);
+  const months=Object.keys(OCC).sort()
+    .filter(m=>m>=CHART_START_MONTH)
+    .filter(m=>((OCC[m]?.rentRoll||0)>0) || (OPEX[m]&&Object.keys(OPEX[m]).length>0));
   const labels=months.map(MONTH_LABEL);
-  const totalPct=months.map(m=>{const d=OCC[m];return d?+(((d.toh+d.poh)/TOTAL_PADS)*100).toFixed(1):null;});
-  const tohPct=months.map(m=>{const d=OCC[m];return d?+((d.toh/TOTAL_PADS)*100).toFixed(1):null;});
-  const pohPct=months.map(m=>{const d=OCC[m];return d?+((d.poh/TOTAL_PADS)*100).toFixed(1):null;});
+  const totalPct=months.map(m=>{const d=OCC[m];return d?d.occupiedPct??null:null;});
   const collected=months.map(m=>OCC[m]?.collected||0);
   const gap=months.map(m=>{const d=OCC[m];return d?Math.max(0,(d.rentRoll||0)-(d.collected||0)):0;});
   const opexTotals=months.map(m=>OPEX[m]?Object.values(OPEX[m]).reduce((a,b)=>a+b,0):0);
@@ -689,18 +745,12 @@ function buildChart(){
     yAxisID:'y1',barPercentage:.55,categoryPercentage:.7,order:3,type:'bar'});
   ds.push(
     {label:'Total occupancy %',data:totalPct,borderColor:'#143A58',backgroundColor:'transparent',
-      tension:.3,pointRadius:3,borderWidth:3,yAxisID:'y',order:1,type:'line'},
-    {label:'TOH occupancy %',data:tohPct,borderColor:'#9F2E2F',borderDash:[5,3],backgroundColor:'transparent',
-      tension:.3,pointRadius:2,borderWidth:2,yAxisID:'y',order:2,type:'line'},
-    {label:'POH occupancy %',data:pohPct,borderColor:'#4E86B0',backgroundColor:'transparent',
-      tension:.3,pointRadius:2,borderWidth:2,yAxisID:'y',order:2,type:'line'}
+      tension:.3,pointRadius:3,borderWidth:3,yAxisID:'y',order:1,type:'line'}
   );
 
   // legend
   const items=[
     {label:'Total occupancy %',c:'#143A58',line:true},
-    {label:'TOH occupancy %',c:'#9F2E2F',line:true,dash:true},
-    {label:'POH occupancy %',c:'#4E86B0',line:true},
     {label:'Rent collected',c:'#15803D'},
     {label:'Uncollected',c:'#B91C1C'},
     ...(hasOpex?[{label:'Operating expenses',c:'#C99A3A'}]:[])
