@@ -127,11 +127,11 @@ h2.title{font-family:Cambria,Georgia,serif;font-size:2.15rem;font-weight:700;col
 
 /* pipeline list */
 .pipe{margin-top:6px}
-.pipe .pi{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.pipe .pi{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
 .pipe .pi:last-child{border-bottom:none}
-.pipe .cnt{font-family:Cambria,serif;font-size:1.5rem;font-weight:700;color:var(--barn);min-width:38px}
-.pipe .pt{font-size:.92rem}.pipe .pt b{color:var(--navy)}
-.pipe .pi-rent{margin-left:auto;font-family:Cambria,serif;font-weight:700;color:#1f7a4d;font-size:.95rem;white-space:nowrap;padding-left:12px}
+.pipe .cnt{font-family:Cambria,serif;font-size:1.35rem;font-weight:700;color:var(--barn);min-width:34px}
+.pipe .pt{font-size:.9rem}.pipe .pt b{color:var(--navy)}
+.pipe .pi-rent{margin-left:auto;font-family:Cambria,serif;font-weight:700;color:#1f7a4d;font-size:.92rem;white-space:nowrap;padding-left:12px}
 
 /* footer tag on light slides */
 .foot{position:absolute;bottom:22px;left:60px;right:60px;display:flex;justify-content:space-between;
@@ -386,10 +386,10 @@ const DECK = {
     { pct: "37%", when: "April" },
     { pct: "auto", when: "Current", now: true }   // "auto" → live total occupancy %
   ],
-  leasesSigned:     "auto",   // or type a number like "8"
-  evictionsProcessed: "auto", // total tenants removed — pulled live from moveout-history.json (Bye-Bye List) on Refresh
-  evictionsPending:   "auto", // or type a number
-  waitlist:         "7",      // qualified waitlist (edit as it changes)
+  leasesSigned:     "10",     // per JD's Q3 update
+  evictionsProcessed: "9",    // per JD's Q3 update — override the auto-pull for the call
+  evictionsPending:   "2",    // per JD's Q3 update
+  waitlist:         "15",     // qualified waitlist (edit as it changes)
 
   /* ------- WINS & CHALLENGES (new slide, sits between Occupancy and Strategy) ------- */
   // The tenant comparison is rendered inline in the first wins bullet.
@@ -398,17 +398,16 @@ const DECK = {
   tenantsInherited: { collections: "XX%", tenure: "XX months" },      // EDIT — inherited tenants
 
   wins: [
-    // The first line auto-fills the tenant comparison numbers above.
-    "<b>Better tenants.</b> New-tenant cohort at {NEW_COLL} on-time collections vs {INH_COLL} inherited; average tenure {NEW_TEN} vs {INH_TEN}.",
+    "<b>Better tenant behavior.</b> We have seen less lease violations overall due to accountability. Current tenants seeing bad tenants get evicted has helped and is also bringing in better tenants.",
     "<b>Strong demand.</b> No shortage of qualified applicants — units fill as soon as they come to market.",
     "<b>Rehabs on budget.</b> Completed units tracking within ±5% of projected costs.",
-    "<b>Tighter operations.</b> Stricter tenant screening and lease enforcement now standard."
+    "<b>Tenant operations.</b> Enforcing rules includes quiet hours, yard maintenance and trash. We have gotten rid of over 1,000 cubic yards of trash!"
   ],
   challenges: [
     "<b>Rehab timing.</b> Contractor availability delayed early-year rehabs; timing has since normalized.",
-    "<b>Demo scope larger than DD.</b> Projected 2–3 unsalvageable units at diligence; now 6 across both parks.",
-    "<b>American water testing.</b> Muncie Health Dept mandate is running ~$1K/month — water quality itself has always tested fine.",
-    "<b>Redwood city demo order.</b> City issued a demo order on several Redwood units; overlaps our own demo list but also affects a few Handy-Man Specials in progress."
+    "<b>Demo scope larger than DD.</b> Projected 2–3 unsalvageable units at diligence; now 5 across both parks.",
+    "<b>American water testing.</b> IDEM (Indiana Department of Environmental Management) is testing chlorine levels across the Muncie city water system. American MHP is close to satisfying the threshold — once complete we will not be required to test again (currently ~$1K/month to conduct).",
+    "<b>Redwood city demo order.</b> The Unsafe Housing Board (Muncie Building Department) issued a demo order on several Redwood units. It largely overlaps our own demo list but affects a few Handy-Man Special units close to being sold."
   ],
 
   // --- Slide 3: Strategy shift ---
@@ -422,16 +421,17 @@ const DECK = {
   // Forthcoming leases pipeline (edit counts + labels freely)
   pipeline: [
     // 'rent' is optional per line — additional monthly lot rent this line brings in
-    { count: "2–3", label: "<b>Handy-Man Specials</b> — sold to tenants, minimal CapEx",  rent: "2–3 x $450/mo. = $900–$1,350/mo." },
+    { count: "4",   label: "<b>Handy-Man Specials</b> — sold to tenants, minimal CapEx",  rent: "4 x $450/mo. = $1,800/mo." },
+    { count: "3",   label: "<b>Handy-Man Specials forthcoming</b> — deals in progress",   rent: "3 x $450/mo. = $1,350/mo." },
     { count: "3",   label: "<b>Rehabbed POHs</b> — completed and lease-ready",             rent: "$2,650/mo. total" },
-    { count: "1",   label: "<b>Commercial building</b> — new income stream",               rent: "$600/mo." }
+    { count: "1",   label: "<b>Commercial building</b> — new income stream",               rent: "$1,000/mo." }
   ],
 
   // --- Slide 4: CapEx & financials (numbers auto; deltas editable) ---
-  rehabsCompleted: "7",  // or "auto" to pull from tile lanes (leased-pohs + rehab-complete)
-  rehabsInProgress:"auto",
+  rehabsCompleted: "8",  // per JD for Q3 call
+  rehabsInProgress:"2",  // per JD for Q3 call
   capexYTD:        "auto",  // pulls from capex-transactions if available
-  rentRoll:        "auto",  // pulls from rm-data / occupancy-history if available
+  rentRoll:        "$12,575/mo",  // hardcoded per JD for the call; wire back to "auto" once revenue pipeline is set up
   rentRollDelta:   "▲ growing since close",
   collections:     "auto",
   collectionsDelta:"▲ on-time rate improving",
@@ -443,12 +443,12 @@ const DECK = {
     "<b>Rent Manager.</b> Full property-management system live — automated rent roll, delinquency, and reporting.",
     "<b>Live dashboard (built with Claude).</b> Cloud-synced tracker for rehabs, occupancy, and financials across both parks.",
     "<b>Availability website.</b> New site listing available units to speed up the tenant funnel.",
-    "<b>ZEGO payments.</b> Online rent-payment processor rolling out August to lift on-time collections."
+    "<b>ZEGO payments.</b> Online rent-payment processor going online in September to lift on-time collections."
   ],
-  locStatus: "On track to initiate the LOC with Fountain Trust once the current rehab units are completed and leased. We're supplying updated monthly rent rolls so the bank can calculate NOI toward the $120–130K target.",
+  locStatus: "On track to initiate the LOC with Fountain Trust once the current rehab units are completed and leased. We are supplying updated monthly financials to bank to corroborate increased rent rolls and valuation.",
   locNext: "<b>Next:</b> schedule the property appraisal (targeting summer) and formalize terms once NOI clears the threshold.",
 
-  chartNote: "Occupancy % (lines, left axis) against rent collected and operating expenses ($, right axis)."
+  chartNote: "Occupancy % (line, left axis) against rent and expenses ($, right axis). Loan payment stacked on top of operating expenses."
 };
 
 /* ================================================================
@@ -469,10 +469,21 @@ let OCC = {  // occupancy by month: occupiedPct = total occupied % of 63 pads
   '2026-04':{occupiedPct:33.3, rentRoll:8500,collected:7800},
   '2026-05':{occupiedPct:34.9, rentRoll:9000,collected:8200},
   '2026-06':{occupiedPct:36.5, rentRoll:9500,collected:8500},
-  '2026-07':{occupiedPct:33.3, rentRoll:9625,collected:8600}
+  '2026-07':{occupiedPct:33.3, rentRoll:9625,collected:8600},
+  '2026-08':{occupiedPct:40.0, rentRoll:12675,collected:12675, projected:true}  // PROJECTED — flagged so chart draws it lighter/dashed
 };
 // OpEx by month by category (baseline placeholder; replaced by payables-history)
-let OPEX = {};
+let OPEX = {  // baseline OpEx by month; overwritten when payables-history.json syncs. EDIT with real numbers as they firm up.
+  '2025-12':{'Operating':3200},
+  '2026-01':{'Operating':3400},
+  '2026-02':{'Operating':2900},
+  '2026-03':{'Operating':3600},
+  '2026-04':{'Operating':4100},
+  '2026-05':{'Operating':3500},
+  '2026-06':{'Operating':3800},
+  '2026-07':{'Operating':3200},
+  '2026-08':{'Operating':3200}   // PROJECTED — same as July per JD to show the rent jump against flat costs
+};
 // Derived stat baselines from current tile data snapshot:
 let STATS = {
   leasesSigned: 8,          // per Q2 notes (running total since close)
@@ -691,11 +702,11 @@ function render(){
   document.getElementById('s4_completed').textContent=pick(DECK.rehabsCompleted,STATS.rehabsCompleted);
   document.getElementById('s4_inrehab').textContent=pick(DECK.rehabsInProgress,STATS.rehabsInProgress);
   document.getElementById('s4_capex').textContent=pick(DECK.capexYTD, moneyK(STATS.capexYTD));
-  // pick the latest month that actually has revenue data (not just the last key in OCC,
-  // which may now include newer months from occupancy-history.json where rentRoll is 0).
+  // pick the latest month that actually has revenue data AND isn't flagged projected —
+  // the "current state" tiles on s4 should reflect actuals, not projections shown on the chart.
   const months=Object.keys(OCC).sort();
-  const lastRevMonth=[...months].reverse().find(m=>OCC[m]?.rentRoll>0);
-  const lastOpexMonth=[...months].reverse().find(m=>OPEX[m]&&Object.keys(OPEX[m]).length>0);
+  const lastRevMonth=[...months].reverse().find(m=>OCC[m]?.rentRoll>0 && !OCC[m]?.projected);
+  const lastOpexMonth=[...months].reverse().find(m=>OPEX[m]&&Object.keys(OPEX[m]).length>0 && !OCC[m]?.projected);
   const lastData=OCC[lastRevMonth]||{};
   document.getElementById('s4_rentroll').textContent=pick(DECK.rentRoll, money(lastData.rentRoll||0)+'/mo');
   document.getElementById('s4_rentroll_d').textContent=DECK.rentRollDelta;
@@ -720,43 +731,54 @@ function render(){
   document.getElementById('s6_loc_next').innerHTML=DECK.locNext;
 }
 
-/* ---------- chart (mirrors dashboard Historical Performance) ---------- */
+/* ---------- chart (vertical time-series: Rent stack + OpEx/Loan stack + occupancy line) ---------- */
 let chartInstance=null;
 const CHART_START_MONTH='2025-12'; // first month shown on the Historical Performance chart
+const LOAN_PAYMENT=4837.04;        // park mortgage — fixed monthly debt service. EDIT if refinanced.
 function buildChart(){
   if(typeof Chart==='undefined'){ setTimeout(buildChart,120); return; }
   const months=Object.keys(OCC).sort()
     .filter(m=>m>=CHART_START_MONTH)
     .filter(m=>((OCC[m]?.rentRoll||0)>0) || (OPEX[m]&&Object.keys(OPEX[m]).length>0));
-  const labels=months.map(MONTH_LABEL);
+  const labels=months.map(m=>OCC[m]?.projected?MONTH_LABEL(m)+' (proj)':MONTH_LABEL(m));
+  const isProj=m=>!!OCC[m]?.projected;
+  // per-bar color arrays: projected months get lower alpha to visually distinguish them
+  const colorFor=(base,m)=>isProj(m)?base+'80':base;  // 80 hex = ~50% alpha
+  const collectedColors=months.map(m=>colorFor('#15803D',m));
+  const gapColors      =months.map(m=>colorFor('#B91C1C',m));
+  const opexColors     =months.map(m=>colorFor('#C99A3A',m));
+  const loanColors     =months.map(m=>colorFor('#A8C1D4',m));
   const totalPct=months.map(m=>{const d=OCC[m];return d?d.occupiedPct??null:null;});
   const collected=months.map(m=>OCC[m]?.collected||0);
   const gap=months.map(m=>{const d=OCC[m];return d?Math.max(0,(d.rentRoll||0)-(d.collected||0)):0;});
   const opexTotals=months.map(m=>OPEX[m]?Object.values(OPEX[m]).reduce((a,b)=>a+b,0):0);
   const hasOpex=opexTotals.some(v=>v>0);
+  const loanTotals=months.map(_=>LOAN_PAYMENT);
 
   const ds=[
-    {label:'Rent collected',data:collected,backgroundColor:'#15803D',stack:'rev',yAxisID:'y1',
+    {label:'Rent collected',data:collected,backgroundColor:collectedColors,stack:'rev',yAxisID:'y1',
       barPercentage:.55,categoryPercentage:.7,order:3,type:'bar'},
-    {label:'Uncollected',data:gap,backgroundColor:'#B91C1C',stack:'rev',yAxisID:'y1',
+    {label:'Uncollected',data:gap,backgroundColor:gapColors,stack:'rev',yAxisID:'y1',
       barPercentage:.55,categoryPercentage:.7,order:3,type:'bar'},
   ];
-  if(hasOpex) ds.push({label:'Operating expenses',data:opexTotals,backgroundColor:'#C99A3A',stack:'op',
+  if(hasOpex) ds.push({label:'Operating expenses',data:opexTotals,backgroundColor:opexColors,stack:'op',
+    yAxisID:'y1',barPercentage:.55,categoryPercentage:.7,order:3,type:'bar'});
+  ds.push({label:'Loan payment',data:loanTotals,backgroundColor:loanColors,stack:'op',
     yAxisID:'y1',barPercentage:.55,categoryPercentage:.7,order:3,type:'bar'});
   ds.push(
     {label:'Total occupancy %',data:totalPct,borderColor:'#143A58',backgroundColor:'transparent',
       tension:.3,pointRadius:3,borderWidth:3,yAxisID:'y',order:1,type:'line'}
   );
 
-  // legend
   const items=[
     {label:'Total occupancy %',c:'#143A58',line:true},
     {label:'Rent collected',c:'#15803D'},
     {label:'Uncollected',c:'#B91C1C'},
-    ...(hasOpex?[{label:'Operating expenses',c:'#C99A3A'}]:[])
+    ...(hasOpex?[{label:'Operating expenses',c:'#C99A3A'}]:[]),
+    {label:'Loan payment',c:'#A8C1D4'}
   ];
   document.getElementById('legend-row').innerHTML=items.map(it=>
-    `<span class="lg"><span class="sw ${it.line?'':'box'}" style="background:${it.c};${it.dash?'background:repeating-linear-gradient(90deg,'+it.c+' 0 5px,transparent 5px 8px)':''}"></span>${it.label}</span>`
+    `<span class="lg"><span class="sw ${it.line?'':'box'}" style="background:${it.c}"></span>${it.label}</span>`
   ).join('');
 
   if(chartInstance) chartInstance.destroy();
