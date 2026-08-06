@@ -802,6 +802,24 @@ function buildChart(){
       }
     }
   });
+  // Fix: Chart.js 4 doesn't reliably paint bars when the canvas is off-screen at creation
+  // time. Force a redraw when the chart slide enters the viewport, and on window resize.
+  const forceRepaint=()=>{ try{ chartInstance.resize(); chartInstance.update('none'); }catch(e){} };
+  requestAnimationFrame(forceRepaint);
+  setTimeout(forceRepaint, 300);
+  setTimeout(forceRepaint, 900);
+  if('IntersectionObserver' in window){
+    const io=new IntersectionObserver((entries,obs)=>{
+      entries.forEach(e=>{
+        if(e.isIntersecting){
+          forceRepaint();
+          setTimeout(forceRepaint, 80);   // one more pass after layout settles
+        }
+      });
+    }, {threshold:0.05});
+    io.observe(document.getElementById('deckChart'));
+  }
+  window.addEventListener('resize', forceRepaint);
 }
 
 /* ---------- boot ---------- */
