@@ -435,7 +435,7 @@ const DECK = {
   rentRollDelta:   "▲ growing since close",
   collections:     "auto",
   collectionsDelta:"▲ on-time rate improving",
-  opex:            "auto",
+  opex:            "$5,194/mo",  // hardcoded per JD (June actual as placeholder); wire back to "auto" once figures firm up
   opexDelta:       "— tracking to budget",
 
   // --- Slide 6: Operations + LOC ---
@@ -469,8 +469,8 @@ let OCC = {  // occupancy by month: occupiedPct = total occupied % of 63 pads
   '2026-04':{occupiedPct:33.3, rentRoll:8500,collected:7800},
   '2026-05':{occupiedPct:34.9, rentRoll:9000,collected:8200},
   '2026-06':{occupiedPct:36.5, rentRoll:9500,collected:8500},
-  '2026-07':{occupiedPct:33.3, rentRoll:9625,collected:8600},
-  '2026-08':{occupiedPct:40.0, rentRoll:12675,collected:12675, projected:true}  // PROJECTED — flagged so chart draws it lighter/dashed
+  '2026-07':{occupiedPct:33.3, rentRoll:9625,collected:8600}
+  // Aug 2026 lives in the PROJECTIONS constant (see below OPEX). Don't duplicate here.
 };
 // OpEx by month by category (baseline placeholder; replaced by payables-history)
 let OPEX = {  // baseline OpEx by month; overwritten when payables-history.json syncs. EDIT with real numbers as they firm up.
@@ -481,8 +481,8 @@ let OPEX = {  // baseline OpEx by month; overwritten when payables-history.json 
   '2026-04':{'Operating':4100},
   '2026-05':{'Operating':3500},
   '2026-06':{'Operating':3800},
-  '2026-07':{'Operating':3200},
-  '2026-08':{'Operating':3200}   // PROJECTED — same as July per JD to show the rent jump against flat costs
+  '2026-07':{'Operating':3200}
+  // Aug 2026 lives in the PROJECTIONS constant. Don't duplicate here.
 };
 // Derived stat baselines from current tile data snapshot:
 let STATS = {
@@ -571,6 +571,7 @@ async function refreshData(){
       const mo=JSON.parse(files['moveout-history.json'].content);
       applyMoveouts(mo);
     }
+    applyProjections();   // always last — layers projected months over any gaps in live data
     render();
     pill.className='status-pill live'; pill.textContent='Live data ✓';
   }catch(e){
@@ -596,6 +597,42 @@ function applyOccupancy(oh){
     };
   });
   if(Object.keys(next).length) OCC=next;
+}
+
+/* ============================================================================
+   PROJECTIONS — hardcoded forecast for upcoming months.
+   Rules:
+   - Live data ALWAYS wins where it exists (Rent Manager truth beats projection).
+   - Where live data is missing, the projection fills in so the chart shows a
+     "next month" bar even before RM data arrives.
+   - Projected months render translucent with "(proj)" label on the chart.
+   - To retire a projection: delete its entry here. Nothing else to change.
+   ============================================================================ */
+const PROJECTIONS = {
+  '2026-08': {
+    occupiedPct: 40.0,             // used for the "Current" trajectory pill and the chart line
+    rentRoll:    12675,            // projected total rent charged
+    collected:   12675,            // projected as fully collected (no red uncollected segment)
+    opex:        { 'Operating': 5194 }   // per JD — using June's actual figure as the placeholder
+  }
+};
+function applyProjections(){
+  Object.keys(PROJECTIONS).forEach(m=>{
+    const p = PROJECTIONS[m];
+    const live = OCC[m] || {};
+    // OCC: prefer live occupancy%, fall back to projection; always use projection for rent/collected
+    // (until a revenue-history.json pipeline exists that carries real monthly rent).
+    OCC[m] = {
+      occupiedPct: (live.occupiedPct != null && live.occupiedPct > 0) ? live.occupiedPct : p.occupiedPct,
+      rentRoll:    live.rentRoll || p.rentRoll,
+      collected:   live.collected || p.collected,
+      projected:   !(live.rentRoll > 0)   // stays projected until real rent data appears
+    };
+    // OPEX: only fill in projection if live payables has no entry for this month yet.
+    if(!OPEX[m] || Object.keys(OPEX[m]).length === 0){
+      OPEX[m] = p.opex;
+    }
+  });
 }
 
 /* map payables-history into OPEX + latest opex figure */
@@ -660,7 +697,15 @@ function render(){
   DECK.trajectory.forEach((step,i)=>{
     if(i>0){const a=document.createElement('span');a.className='arrow';a.textContent='→';traj.appendChild(a);}
     const d=document.createElement('div'); d.className='step'+(step.now?' now':'');
-    const pct=step.pct==='auto'?STATS.currentTotalOccPct+'%':step.pct;
+    // "auto" prefers the projected month's occupancy (what we're stepping into now),
+    // falling back to the tile-based STATS if no projection is active.
+    let autoPct = STATS.currentTotalOccPct;
+    const projMonths = Object.keys(PROJECTIONS).sort();
+    if(projMonths.length){
+      const p = PROJECTIONS[projMonths[projMonths.length-1]];
+      if(p?.occupiedPct != null) autoPct = Math.round(p.occupiedPct);
+    }
+    const pct=step.pct==='auto'?autoPct+'%':step.pct;
     d.innerHTML=`<div class="pct">${pct}</div><div class="when">${step.when}</div>`;
     traj.appendChild(d);
   });
@@ -824,6 +869,7 @@ function buildChart(){
 
 /* ---------- boot ---------- */
 window.addEventListener('DOMContentLoaded',()=>{
+  applyProjections();   // layer projections on top of baseline OCC/OPEX first
   render();
   // auto-attempt live refresh if a token is already present
   if(getToken().length>=10) refreshData();
