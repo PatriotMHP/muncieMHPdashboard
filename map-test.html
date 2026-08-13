@@ -172,6 +172,8 @@ textarea.finput{min-height:58px;resize:vertical}
 .btn.danger:hover{background:#FCEAE8}
 .evict-toggle{display:flex;align-items:center;gap:8px;font-size:12px;color:#1F2E3D;cursor:pointer;padding:8px 10px;border:1px solid #E8B0A8;border-radius:7px;background:#FDF4F3;font-weight:500}
 .evict-toggle input{width:16px;height:16px;cursor:pointer;accent-color:#E53E3E}
+.finput.rm-locked{background:#2a3040;color:#8fa0b0;border-color:#3a4555;cursor:not-allowed}
+.rm-tag{font-size:9px;color:#6B8A5E;font-weight:600;letter-spacing:.03em;margin-left:6px}
 .evict-dot-lg{width:9px;height:9px;border-radius:50%;background:#E53E3E;display:inline-block}
 .btn{font-size:12px;padding:6px 14px;border-radius:8px;border:1px solid #D0D7DF;background:#fff;color:#3D4D5C;cursor:pointer;font-weight:500;font-family:inherit}
 .btn:hover{background:#F0F3F6}
@@ -1701,6 +1703,16 @@ renderExpenses(capexData, 'capex-tbody', 'all');
       wireBalancesTab(rmData);
       wireRentRollTab(rmData);
       window.RM = rmData; // debug hook: inspect Rent Manager data from the console
+      // Sync current rents from RM into tracker tiles so everything ties
+      if(rmData.rent_roll && window.__trackerData){
+        const T = window.__trackerData;
+        rmData.rent_roll.forEach(r => {
+          if(T[r.unit_id]){
+            T[r.unit_id].cur_lot_rent = r.lot_rent;
+            T[r.unit_id].cur_poh_rent = r.rc || null;
+          }
+        });
+      }
       console.log('RM data loaded, all tabs wired. Updated:', rmData.updated_at);
     } else {
       console.log('No RM data in gist yet — using hardcoded data');
@@ -2166,8 +2178,19 @@ function openModal(id){
   const padNum = t.pad || (id.split('-')[1]||'');
   const niceTitle = `${t.park} ${padNum}`;
   const nf=(fid,lbl,val)=>`<div class="fl"><span class="flbl">${lbl}</span><input class="finput" id="${fid}" type="number" value="${val!=null?val:''}" placeholder="—"></div>`;
+  // RM-locked field: read-only, greyed, sourced from Rent Manager
+  const nfRM=(fid,lbl,val)=>`<div class="fl"><span class="flbl">${lbl}<span class="rm-tag">from RM</span></span><input class="finput rm-locked" id="${fid}" type="number" value="${val!=null?val:''}" readonly tabindex="-1"></div>`;
+  // Look up this unit's current rent from RM data
+  const rmUnit = (window.RM && Array.isArray(window.RM.rent_roll)) ? window.RM.rent_roll.find(r=>r.unit_id===id) : null;
+  const rmLot = rmUnit ? rmUnit.lot_rent : null;
+  const rmPoh = rmUnit ? (rmUnit.rc || 0) : null;
+  // If RM has this unit, override the tracker's cur_lot_rent/cur_poh_rent
+  if(rmUnit){
+    t.cur_lot_rent = rmLot;
+    t.cur_poh_rent = rmPoh || null;
+  }
   const overlay=document.createElement('div');overlay.className='overlay';
-  overlay.innerHTML=`<div class="modal"><div class="modal-top"><div><div class="modal-title">${niceTitle}</div></div><button class="xbtn" id="xbtn">✕</button></div><div class="grid2"><div class="fl"><span class="flbl">Status</span><select class="finput" id="f-ln">${lO}</select></div><div class="sec">Rents</div>${nf('f-cl','Current lot rent',t.cur_lot_rent)}${nf('f-cp','Current POH rent',t.cur_poh_rent)}${nf('f-pl','Prospective lot rent',t.pro_lot_rent)}${nf('f-pp','Prospective POH rent',t.pro_poh_rent)}<div class="sec">Rehab budget</div>${nf('f-est','Rehab estimate',t.rehab_estimate)}${nf('f-hmr','HandyMan Special Rehab',t.handyman_rehab)}<div class="fl"><span class="flbl">Phase</span><input class="finput" id="f-ph" type="text" value="${t.phase||''}" placeholder="—"></div>${nf('f-sp','Spent to date',t.spent_to_date)}${nf('f-n2','$ next 2 weeks',t.spent_next_2wk)}<div class="fl full"><span class="flbl">Budget used — <span id="bpct-lbl">${bp}%</span></span><div class="bbar-bg"><div id="bbar" class="bbar-fill" style="width:${bp}%;background:${L.bd}"></div></div></div><div class="fl"><span class="flbl">Vendor / GC</span><input class="finput" id="f-vd" type="text" value="${t.vendor||''}" placeholder="—"></div><div class="fl full"><span class="flbl">Eviction stage</span><select class="finput" id="f-ev"><option value="">None</option>${Object.entries(EVICT_STAGES).map(([k,v])=>`<option value="${k}"${t.eviction===k?' selected':''}>${v.label}</option>`).join('')}</select></div></div><div class="sec" style="margin-top:.25rem">Comments</div><div class="clist" id="clist">${cHTML}</div><textarea class="finput" id="f-cm" placeholder="Add a comment…"></textarea><div class="btn-row"><button class="btn danger" id="dbtn">Delete tile</button><button class="btn" id="xbtn2">Cancel</button><button class="btn pri" id="sbtn">Save changes</button></div></div>`;
+  overlay.innerHTML=`<div class="modal"><div class="modal-top"><div><div class="modal-title">${niceTitle}</div></div><button class="xbtn" id="xbtn">✕</button></div><div class="grid2"><div class="fl"><span class="flbl">Status</span><select class="finput" id="f-ln">${lO}</select></div><div class="sec">Rents</div>${rmUnit ? nfRM('f-cl','Current lot rent',rmLot) : nf('f-cl','Current lot rent',t.cur_lot_rent)}${rmUnit ? nfRM('f-cp','Current POH rent',rmPoh||null) : nf('f-cp','Current POH rent',t.cur_poh_rent)}${nf('f-pl','Prospective lot rent',t.pro_lot_rent)}${nf('f-pp','Prospective POH rent',t.pro_poh_rent)}<div class="sec">Rehab budget</div>${nf('f-est','Rehab estimate',t.rehab_estimate)}${nf('f-hmr','HandyMan Special Rehab',t.handyman_rehab)}<div class="fl"><span class="flbl">Phase</span><input class="finput" id="f-ph" type="text" value="${t.phase||''}" placeholder="—"></div>${nf('f-sp','Spent to date',t.spent_to_date)}${nf('f-n2','$ next 2 weeks',t.spent_next_2wk)}<div class="fl full"><span class="flbl">Budget used — <span id="bpct-lbl">${bp}%</span></span><div class="bbar-bg"><div id="bbar" class="bbar-fill" style="width:${bp}%;background:${L.bd}"></div></div></div><div class="fl"><span class="flbl">Vendor / GC</span><input class="finput" id="f-vd" type="text" value="${t.vendor||''}" placeholder="—"></div><div class="fl full"><span class="flbl">Eviction stage</span><select class="finput" id="f-ev"><option value="">None</option>${Object.entries(EVICT_STAGES).map(([k,v])=>`<option value="${k}"${t.eviction===k?' selected':''}>${v.label}</option>`).join('')}</select></div></div><div class="sec" style="margin-top:.25rem">Comments</div><div class="clist" id="clist">${cHTML}</div><textarea class="finput" id="f-cm" placeholder="Add a comment…"></textarea><div class="btn-row"><button class="btn danger" id="dbtn">Delete tile</button><button class="btn" id="xbtn2">Cancel</button><button class="btn pri" id="sbtn">Save changes</button></div></div>`;
   document.body.appendChild(overlay);
   ['#f-est','#f-sp'].forEach(s=>{const el=overlay.querySelector(s);if(el)el.addEventListener('input',()=>{const e=parseFloat(overlay.querySelector('#f-est').value)||0,s=parseFloat(overlay.querySelector('#f-sp').value)||0,p=e>0?Math.min(100,Math.round(s/e*100)):0;const b=overlay.querySelector('#bbar'),l=overlay.querySelector('#bpct-lbl');if(b)b.style.width=p+'%';if(l)l.textContent=p+'%';});});
   const close=()=>overlay.remove();
@@ -2184,7 +2207,9 @@ function openModal(id){
   overlay.querySelector('#sbtn').onclick=()=>{
     const n=fid=>{const x=parseFloat(overlay.querySelector(fid)?.value);return isNaN(x)?null:x;};
     const s=fid=>overlay.querySelector(fid)?.value.trim()||null;
-    t.cur_lot_rent=n('#f-cl');t.cur_poh_rent=n('#f-cp');t.pro_lot_rent=n('#f-pl');t.pro_poh_rent=n('#f-pp');
+    // Current rents: if RM provides them, keep the RM values; only save manual edits for non-RM units
+    if(!rmUnit){ t.cur_lot_rent=n('#f-cl'); t.cur_poh_rent=n('#f-cp'); }
+    t.pro_lot_rent=n('#f-pl');t.pro_poh_rent=n('#f-pp');
     t.rehab_estimate=n('#f-est');t.spent_to_date=n('#f-sp');t.spent_next_2wk=n('#f-n2');
     t.handyman_rehab=n('#f-hmr');
     t.phase=s('#f-ph');t.vendor=s('#f-vd');
@@ -2441,22 +2466,18 @@ moduleBoot();
   }
 
   // ---- RAW DATA — seeded from Summary Rent Roll exports (real RM data) ----
-  // Per-tenant: each unit's RM rent rate vs what they actually paid that month.
-  // rentDue = sum of monthly rent for all occupied units
-  // collected (green) = sum of min(paid, rent) per tenant
-  // uncollected (red) = sum of individual shortfalls
-  // green + red always equals rentDue.
+  // tohOcc/pohOcc estimated from tracker type ratios; overridden by occupancy-history.json on load.
   const DATA = {
-    '2025-10':{amOcc:1,rwOcc:0,tohOcc:0,pohOcc:0,rentDue:700,collected:700,uncollected:0,overpay:0},
-    '2025-11':{amOcc:5,rwOcc:10,tohOcc:0,pohOcc:0,rentDue:5825,collected:1875,uncollected:3950,overpay:0},
-    '2025-12':{amOcc:5,rwOcc:10,tohOcc:0,pohOcc:0,rentDue:5825,collected:4525.0,uncollected:1300.0,overpay:0},
-    '2026-01':{amOcc:7,rwOcc:14,tohOcc:0,pohOcc:0,rentDue:9175,collected:7125.0,uncollected:2050.0,overpay:0},
-    '2026-02':{amOcc:7,rwOcc:15,tohOcc:0,pohOcc:0,rentDue:9925,collected:6675.0,uncollected:3250.0,overpay:0},
-    '2026-03':{amOcc:7,rwOcc:16,tohOcc:0,pohOcc:0,rentDue:10325,collected:7975.0,uncollected:2350.0,overpay:0},
-    '2026-04':{amOcc:7,rwOcc:18,tohOcc:0,pohOcc:0,rentDue:12625,collected:8875.0,uncollected:3750.0,overpay:0},
-    '2026-05':{amOcc:6,rwOcc:17,tohOcc:0,pohOcc:0,rentDue:11375,collected:8500.0,uncollected:2875.0,overpay:0},
-    '2026-06':{amOcc:6,rwOcc:17,tohOcc:0,pohOcc:0,rentDue:11375,collected:9615.0,uncollected:1760.0,overpay:0},
-    '2026-07':{amOcc:6,rwOcc:17,tohOcc:0,pohOcc:0,rentDue:11025,collected:7565.0,uncollected:3460.0,overpay:0}
+    '2025-10':{amOcc:1,rwOcc:0,tohOcc:1,pohOcc:0,rentDue:700,collected:700,uncollected:0,overpay:0},
+    '2025-11':{amOcc:5,rwOcc:10,tohOcc:11,pohOcc:4,rentDue:5825,collected:1875,uncollected:3950,overpay:0},
+    '2025-12':{amOcc:5,rwOcc:10,tohOcc:11,pohOcc:4,rentDue:5825,collected:4525.0,uncollected:1300.0,overpay:0},
+    '2026-01':{amOcc:7,rwOcc:14,tohOcc:16,pohOcc:5,rentDue:9175,collected:7125.0,uncollected:2050.0,overpay:0},
+    '2026-02':{amOcc:7,rwOcc:15,tohOcc:17,pohOcc:5,rentDue:9925,collected:6675.0,uncollected:3250.0,overpay:0},
+    '2026-03':{amOcc:7,rwOcc:16,tohOcc:18,pohOcc:5,rentDue:10325,collected:7975.0,uncollected:2350.0,overpay:0},
+    '2026-04':{amOcc:7,rwOcc:18,tohOcc:19,pohOcc:6,rentDue:12625,collected:8875.0,uncollected:3750.0,overpay:0},
+    '2026-05':{amOcc:6,rwOcc:17,tohOcc:18,pohOcc:5,rentDue:11375,collected:8500.0,uncollected:2875.0,overpay:0},
+    '2026-06':{amOcc:6,rwOcc:17,tohOcc:18,pohOcc:5,rentDue:11375,collected:9615.0,uncollected:1760.0,overpay:0},
+    '2026-07':{amOcc:6,rwOcc:17,tohOcc:18,pohOcc:5,rentDue:11025,collected:7565.0,uncollected:3460.0,overpay:0}
   };
   let occDataLoaded = false;
 
@@ -2715,11 +2736,26 @@ moduleBoot();
     const real = await fetchOccupancyHistory();
     if(real && Array.isArray(real) && real.length){
       real.forEach(entry => {
-        if(!DATA[entry.month]) DATA[entry.month] = {rentRoll:0, collected:0};
-        DATA[entry.month].amOcc = entry.american_avg;
-        DATA[entry.month].rwOcc = entry.redwood_avg;
-        if(typeof entry.toh_avg === 'number') DATA[entry.month].tohOcc = entry.toh_avg;
-        if(typeof entry.poh_avg === 'number') DATA[entry.month].pohOcc = entry.poh_avg;
+        if(!DATA[entry.month]) DATA[entry.month] = {rentDue:0, collected:0, uncollected:0, overpay:0};
+        const am = entry.american_avg || 0;
+        const rw = entry.redwood_avg || 0;
+        DATA[entry.month].amOcc = am;
+        DATA[entry.month].rwOcc = rw;
+        if(typeof entry.toh_avg === 'number' && typeof entry.poh_avg === 'number'){
+          DATA[entry.month].tohOcc = entry.toh_avg;
+          DATA[entry.month].pohOcc = entry.poh_avg;
+        } else {
+          // occupancy-history.json doesn't split TOH/POH — use the total
+          // and estimate the split from the tracker's current type ratios.
+          const total = entry.occupied_avg || (am + rw);
+          const T = window.__trackerData || {};
+          const allOcc = Object.values(T).filter(t => t.status === 'occupied');
+          const tohCount = allOcc.filter(t => t.type === 'toh').length;
+          const pohCount = allOcc.filter(t => t.type === 'poh').length;
+          const totalCount = tohCount + pohCount || 1;
+          DATA[entry.month].tohOcc = Math.round(total * tohCount / totalCount);
+          DATA[entry.month].pohOcc = Math.round(total * pohCount / totalCount);
+        }
       });
       occDataLoaded = true;
       buildChart();
@@ -2734,13 +2770,16 @@ moduleBoot();
     const real = await fetchRentHistory();
     if(real && Array.isArray(real) && real.length){
       real.forEach(entry => {
-        if(!DATA[entry.month]) DATA[entry.month] = {amOcc:0,rwOcc:0,tohOcc:0,pohOcc:0,rentRoll:0,collected:0};
+        if(!DATA[entry.month]) DATA[entry.month] = {amOcc:0,rwOcc:0,tohOcc:0,pohOcc:0,rentDue:0,collected:0,uncollected:0,overpay:0};
         DATA[entry.month].rentDue = entry.rent_due || 0;
         DATA[entry.month].collected = entry.bar_collected || 0;
         DATA[entry.month].uncollected = entry.bar_uncollected || 0;
         DATA[entry.month].overpay = entry.bar_overpay || 0;
-        if(typeof entry.american_occupied === 'number') DATA[entry.month].amOcc = entry.american_occupied;
-        if(typeof entry.redwood_occupied === 'number') DATA[entry.month].rwOcc = entry.redwood_occupied;
+        // Only set amOcc/rwOcc if tohOcc/pohOcc haven't been set by occupancy loader
+        if(!DATA[entry.month].tohOcc && !DATA[entry.month].pohOcc) {
+          if(typeof entry.american_occupied === 'number') DATA[entry.month].amOcc = entry.american_occupied;
+          if(typeof entry.redwood_occupied === 'number') DATA[entry.month].rwOcc = entry.redwood_occupied;
+        }
       });
       buildChart();
       console.log('Real rent history loaded from gist:', real.length, 'months');
