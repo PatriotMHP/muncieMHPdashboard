@@ -1441,19 +1441,28 @@ renderExpenses(capexData, 'capex-tbody', 'all');
   function renderFinancialStatus(rmData, parkName, elId){
     const el = document.getElementById(elId); if(!el) return;
     const prefix = parkName==='Redwood' ? 'Redwood' : 'American';
-    // filter balance_due by property
+    const rr = (rmData.rent_roll||[]).filter(r => r.property.includes(prefix));
     const balances = (rmData.balance_due||[]).filter(b => b.property.includes(prefix));
     const delinq = balances.filter(b => b.balance > 0);
     const current = balances.filter(b => b.balance <= 0);
     const totalOwed = delinq.reduce((s,b) => s+b.balance, 0);
-    const totalRent = (rmData.rent_roll||[]).filter(r => r.property.includes(prefix)).reduce((s,r) => s+r.total, 0);
     const money = n => '$'+Math.abs(Math.round(n)).toLocaleString();
+    // Rent breakdown from RM
+    const lotRent = rr.reduce((s,r) => s+r.lot_rent, 0);
+    const pohRent = rr.reduce((s,r) => s+(r.rc||0), 0);
+    const totalRent = rr.reduce((s,r) => s+r.total, 0);
+    // TOH rent: match against tracker to determine type
+    const T = window.__trackerData || {};
+    const tohRent = rr.filter(r => T[r.unit_id] && T[r.unit_id].type==='toh').reduce((s,r) => s+r.total, 0);
     
     let rows = '';
-    rows += `<div class="side-stat"><span class="s-l">Current</span><span class="s-v" style="color:#5ee8a0">${current.length} tenants</span></div>`;
+    rows += `<div class="side-stat"><span class="s-l">TOH Rent</span><span class="s-v" style="color:#2E9E63">${money(tohRent)}</span></div>`;
+    rows += `<div class="side-stat"><span class="s-l">Lot Rent</span><span class="s-v" style="color:#5ee8a0">${money(lotRent)}</span></div>`;
+    if(pohRent > 0) rows += `<div class="side-stat"><span class="s-l">POH Rent</span><span class="s-v" style="color:#e0a94a">${money(pohRent)}</span></div>`;
+    rows += `<div class="side-stat"><span class="s-l">Total Rent</span><span class="s-v" style="color:#5ee8a0;font-weight:700">${money(totalRent)}</span></div>`;
+    rows += `<div class="side-stat" style="border-top:1px solid #2e3248;margin-top:4px;padding-top:4px"><span class="s-l">Current</span><span class="s-v" style="color:#5ee8a0">${current.length} tenants</span></div>`;
     rows += `<div class="side-stat"><span class="s-l">Delinquent</span><span class="s-v" style="color:${delinq.length?'#e05c5c':'#5ee8a0'}">${delinq.length?delinq.length+' tenants':'None'}</span></div>`;
     rows += `<div class="side-stat"><span class="s-l">Total Owed</span><span class="s-v" style="color:${totalOwed>0?'#e05c5c':'#5ee8a0'}">${totalOwed>0?money(totalOwed):'$0'}</span></div>`;
-    rows += `<div class="side-stat"><span class="s-l">Monthly Rev</span><span class="s-v" style="color:#5ee8a0">${money(totalRent)}</span></div>`;
     if(rmData.updated_at){
       const d=new Date(rmData.updated_at);
       rows += `<div class="side-stat"><span class="s-l">RM Updated</span><span class="s-v" style="color:#7b7f9e;font-size:0.7rem">${d.toLocaleDateString()}</span></div>`;
@@ -1777,7 +1786,6 @@ renderExpenses(capexData, 'capex-tbody', 'all');
       renderFinancialStatus(rmData, 'Redwood', 'rw-fin-live');
       renderFinancialStatus(rmData, 'American', 'am-fin-live');
       // Override summary panel rent figures with RM data so all tabs tie
-      overrideSummaryRents(rmData);
       renderDataSource();
       updateMapDelinqFlags(rmData);
       wireOverviewTab(rmData);
