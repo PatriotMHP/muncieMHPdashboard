@@ -1421,9 +1421,7 @@ renderExpenses(capexData, 'capex-tbody', 'all');
     LANES.forEach(([id,label])=>{
       if(fig.byLane[id]>0) rows += `<div class="side-stat"><span class="s-l">${label}</span><span class="s-v">${fig.byLane[id]}</span></div>`;
     });
-    rows += `<div class="side-stat" style="border-top:1px solid #2e3248;margin-top:6px;padding-top:8px"><span class="s-l">TOH Rent</span><span class="s-v" style="color:#2E9E63">${money(fig.tohRent)}</span></div>`;
-    rows += `<div class="side-stat"><span class="s-l">Total Rent</span><span class="s-v" style="color:#5ee8a0">${money(fig.curRent)}</span></div>`;
-    rows += `<div class="side-stat"><span class="s-l">Potential Rent</span><span class="s-v" style="color:#7d8fe8">${money(fig.proRent)}</span></div>`;
+    rows += `<div class="side-stat" style="border-top:1px solid #2e3248;margin-top:6px;padding-top:8px"><span class="s-l">Potential Rent</span><span class="s-v" style="color:#7d8fe8">${money(fig.proRent)}</span></div>`;
     el.innerHTML = rows;
   }
 
