@@ -830,7 +830,7 @@ select.finput{cursor:pointer}
           <div id="rw-summary-live"><div class="side-stat"><span class="s-l">Loading from tracker…</span><span class="s-v">—</span></div></div>
         </div>
         <div class="side-box">
-          <h4>Financial Status</h4>
+          <h4>Rent &amp; Collections</h4>
           <div id="rw-fin-live">
           <div class="side-stat"><span class="s-l">Current</span><span class="s-v" style="color:#5ee8a0">8 tenants</span></div>
           <div class="side-stat"><span class="s-l">Delinquent</span><span class="s-v" style="color:#e05c5c">10 tenants</span></div>
@@ -851,7 +851,7 @@ select.finput{cursor:pointer}
           <div id="am-summary-live"><div class="side-stat"><span class="s-l">Loading from tracker…</span><span class="s-v">—</span></div></div>
         </div>
         <div class="side-box">
-          <h4>Financial Status</h4>
+          <h4>Rent &amp; Collections</h4>
           <div id="am-fin-live">
           <div class="side-stat"><span class="s-l">Current Tenants</span><span class="s-v" style="color:#5ee8a0">6</span></div>
           <div class="side-stat"><span class="s-l">Delinquent</span><span class="s-v" style="color:#5ee8a0">None</span></div>
@@ -1449,12 +1449,7 @@ renderExpenses(capexData, 'capex-tbody', 'all');
     const lotRent = rr.reduce((s,r) => s+r.lot_rent, 0);
     const pohRent = rr.reduce((s,r) => s+(r.rc||0), 0);
     const totalRent = rr.reduce((s,r) => s+r.total, 0);
-    // TOH rent: match against tracker to determine type
-    const T = window.__trackerData || {};
-    const tohRent = rr.filter(r => T[r.unit_id] && T[r.unit_id].type==='toh').reduce((s,r) => s+r.total, 0);
-    
     let rows = '';
-    rows += `<div class="side-stat"><span class="s-l">TOH Rent</span><span class="s-v" style="color:#2E9E63">${money(tohRent)}</span></div>`;
     rows += `<div class="side-stat"><span class="s-l">Lot Rent</span><span class="s-v" style="color:#5ee8a0">${money(lotRent)}</span></div>`;
     if(pohRent > 0) rows += `<div class="side-stat"><span class="s-l">POH Rent</span><span class="s-v" style="color:#e0a94a">${money(pohRent)}</span></div>`;
     rows += `<div class="side-stat"><span class="s-l">Total Rent</span><span class="s-v" style="color:#5ee8a0;font-weight:700">${money(totalRent)}</span></div>`;
@@ -1515,33 +1510,57 @@ renderExpenses(capexData, 'capex-tbody', 'all');
   }
 
     function updateMapDelinqFlags(rmData){
-    // Replace hardcoded delinquent flags with real RM balance data
+    // Replace hardcoded data with real RM balance + rent roll data.
+    // Lots NOT in RM are cleared so stale tenant names and red dots go away.
     const balById = {};
     (rmData.balance_due||[]).forEach(b => { balById[b.unit_id] = b; });
+    // Also build a rent roll lookup so we know who's actually renting
+    const rrById = {};
+    (rmData.rent_roll||[]).forEach(r => { rrById[r.unit_id] = r; });
+    
     document.querySelectorAll('.lot-group').forEach(g => {
       const lot = g.getAttribute('data-lot');
       const park = g.getAttribute('data-park');
+      if(!lot || !park) return;
       const prefix = park==='american' ? 'A-' : 'R-';
       const uid = prefix + lot;
-      const rm = balById[uid];
-      // update data attributes with RM data
-      if(rm){
-        g.setAttribute('data-balance', rm.balance);
-        g.setAttribute('data-status', rm.balance > 0 ? 'delinquent' : 'current');
-        g.setAttribute('data-name', rm.tenant);
-      }
-      // re-draw delinquent flag based on RM balance
-      const rect = g.querySelector('rect');
-      const old = g.querySelector('.delinq-flag'); if(old) old.remove();
-      const bal = parseFloat(g.getAttribute('data-balance')||'0');
-      if(bal > 0 && rect){
-        const x=parseFloat(rect.getAttribute('x')), y=parseFloat(rect.getAttribute('y')), w=parseFloat(rect.getAttribute('width'));
-        const ns='http://www.w3.org/2000/svg';
-        const circ=document.createElementNS(ns,'circle');
-        circ.setAttribute('class','delinq-flag');
-        circ.setAttribute('cx',x+w-5); circ.setAttribute('cy',y+5); circ.setAttribute('r',5);
-        circ.setAttribute('fill','#e05c5c'); circ.setAttribute('stroke','#fff'); circ.setAttribute('stroke-width','1.2');
-        g.appendChild(circ);
+      const bal = balById[uid];
+      const rr = rrById[uid];
+      
+      // Remove any existing delinquent flag
+      const oldFlag = g.querySelector('.delinq-flag'); if(oldFlag) oldFlag.remove();
+      
+      if(rr){
+        // Unit is in RM rent roll — active tenant
+        g.setAttribute('data-name', rr.tenant || '(Occupied)');
+        const unitBal = bal ? bal.balance : 0;
+        g.setAttribute('data-balance', unitBal);
+        g.setAttribute('data-status', unitBal > 0 ? 'delinquent' : 'current');
+        // Draw red dot if delinquent
+        if(unitBal > 0){
+          const rect = g.querySelector('rect');
+          if(rect){
+            const x=parseFloat(rect.getAttribute('x')), y=parseFloat(rect.getAttribute('y')), w=parseFloat(rect.getAttribute('width'));
+            const ns='http://www.w3.org/2000/svg';
+            const circ=document.createElementNS(ns,'circle');
+            circ.setAttribute('class','delinq-flag');
+            circ.setAttribute('cx',x+w-5); circ.setAttribute('cy',y+5); circ.setAttribute('r',5);
+            circ.setAttribute('fill','#e05c5c'); circ.setAttribute('stroke','#fff'); circ.setAttribute('stroke-width','1.2');
+            g.appendChild(circ);
+          }
+        }
+      } else {
+        // Unit NOT in RM rent roll — vacant or not renting. Clear stale data.
+        const curName = g.getAttribute('data-name')||'';
+        const curStatus = g.getAttribute('data-status')||'';
+        // Only clear if it was showing a tenant (don't clear storage, demo, etc.)
+        if(curName && curStatus !== 'storage' && curStatus !== 'demo' && curStatus !== 'reno'){
+          g.setAttribute('data-name', '');
+          g.setAttribute('data-balance', '0');
+          if(curStatus === 'delinquent' || curStatus === 'current' || curStatus === 'credit'){
+            g.setAttribute('data-status', 'vacant');
+          }
+        }
       }
     });
   }
