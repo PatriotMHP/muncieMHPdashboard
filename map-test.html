@@ -882,17 +882,21 @@ select.finput{cursor:pointer}
   <!-- OPEX TAB -->
   <div id="opex" class="view">
   <div class="data-src data-src-auto"></div>
-    <div class="kpi-grid" style="grid-template-columns:1fr;max-width:400px">
-      <div class="kpi green"><div class="kpi-label">Current Month Revenue</div><div class="kpi-value" id="opex-monthly-rev">$9,625</div><div class="kpi-sub" id="pl-month-label"></div></div>
-      <div class="kpi red"><div class="kpi-label">Current Month OpEx</div><div class="kpi-value" id="opex-monthly-exp">—</div></div>
-      <div class="kpi"><div class="kpi-label">Current Month NOI</div><div class="kpi-value" id="opex-monthly-noi">—</div></div>
+    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin-bottom:20px">
+      <div class="kpi-grid" style="grid-template-columns:1fr;max-width:400px;flex:0 0 auto">
+        <div class="kpi green"><div class="kpi-label">Current Month Revenue</div><div class="kpi-value" id="opex-monthly-rev">$9,625</div><div class="kpi-sub" id="pl-month-label"></div></div>
+        <div class="kpi red"><div class="kpi-label">Current Month OpEx</div><div class="kpi-value" id="opex-monthly-exp">—</div></div>
+        <div class="kpi"><div class="kpi-label">Current Month NOI</div><div class="kpi-value" id="opex-monthly-noi">—</div></div>
+      </div>
+      <div style="flex:1;min-width:300px">
+        <div id="opex-month-cats" class="info-box">
+          <h3>OpEx by Category — Current Month</h3>
+          <div class="info-row"><span class="lbl">Loading...</span><span class="val">—</span></div>
+        </div>
+      </div>
     </div>
 
     <div class="two-col" style="margin-bottom:20px">
-      <div class="info-box" id="opex-month-cats">
-        <h3>OpEx by Category — Current Month</h3>
-        <div class="info-row"><span class="lbl">Loading...</span><span class="val">—</span></div>
-      </div>
       <div class="info-box" id="opex-ytd-cats">
         <h3>OpEx by Category — Year to Date</h3>
         <div class="info-row"><span class="lbl">Loading...</span><span class="val">—</span></div>
@@ -1298,9 +1302,9 @@ function renderOpexCategories(){
   var container = document.getElementById('opex-month-cats');
   if(!dropEl && container){
     var wrapper = document.createElement('div');
-    wrapper.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:8px';
+    wrapper.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:10px';
     wrapper.innerHTML = '<span style="font-size:10px;color:#6B7A8D;font-weight:600;text-transform:uppercase;letter-spacing:.04em">Month</span>'
-      + '<select id="opex-month-select" class="filter-btn" style="padding:5px 10px;font-size:.8rem;cursor:pointer;background:#1a1e2e;color:#cdd;border:1px solid #35394d;border-radius:6px"></select>';
+      + '<select id="opex-month-select" class="filter-btn" style="padding:6px 12px;font-size:.85rem;cursor:pointer;background:#1a1e2e;color:#cdd;border:1px solid #35394d;border-radius:6px;min-width:120px"></select>';
     container.parentElement.insertBefore(wrapper, container);
     dropEl = document.getElementById('opex-month-select');
     dropEl.addEventListener('change', function(){ renderOpexMonth(dropEl.value); });
