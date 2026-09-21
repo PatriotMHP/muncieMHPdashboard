@@ -2680,6 +2680,7 @@ moduleBoot();
     return c;
   }
   const opexByMonth = {};
+  window.opexByMonth = opexByMonth; // expose for Monthly P&L tab
   ALL_MONTHS.forEach(m => opexByMonth[m.key] = {});
   if(typeof opexData !== 'undefined'){
     opexData.forEach(d => {
