@@ -374,7 +374,7 @@ select.finput{cursor:pointer}
     </div>
     <div class="table-wrap" id="rr-american">
       <div class="table-title"><span>American Mobile Home Park — Muncie, IN</span><span class="amt-green">$1,950 / mo</span></div>
-      <table><thead><tr><th>Tenant</th><th>Acct</th><th>Lot</th><th class="r">Lot Rent</th><th class="r">Add'l RC</th><th class="r">Monthly</th><th class="r">Balance</th><th>This Month</th></tr></thead>
+      <table><thead><tr><th>Tenant</th><th>Acct</th><th>Lot Rent</th><th>POH Rent</th><th>Total Rent</th><th>Rent Collected</th><th>Balance</th><th>This Month</th></tr></thead>
       <tbody>
         <tr><td class="tn">Smith, Bill</td><td>3</td><td><span class="lot-badge">1</span></td><td class="r amt-base">$300</td><td class="r amt-zero">—</td><td class="r amt-green">$300</td><td><span class="status status-current">Current</span></td></tr>
         <tr><td class="tn">Russell, Dee</td><td>8</td><td><span class="lot-badge">6</span></td><td class="r amt-base">$300</td><td class="r amt-zero">—</td><td class="r amt-green">$300</td><td><span class="status status-current">Current</span></td></tr>
@@ -386,7 +386,7 @@ select.finput{cursor:pointer}
     </div>
     <div class="table-wrap" id="rr-redwood">
       <div class="table-title"><span>Redwood Mobile Home Park — Muncie, IN</span><span class="amt-green">$7,675 / mo</span></div>
-      <table><thead><tr><th>Tenant</th><th>Acct</th><th>Lot</th><th class="r">Lot Rent</th><th class="r">Add'l RC</th><th class="r">Monthly</th><th class="r">Balance</th><th>This Month</th></tr></thead>
+      <table><thead><tr><th>Tenant</th><th>Acct</th><th>Lot Rent</th><th>POH Rent</th><th>Total Rent</th><th>Rent Collected</th><th>Balance</th><th>This Month</th></tr></thead>
       <tbody>
         <tr><td class="tn">Jennings, John</td><td>31</td><td><span class="lot-badge">2</span></td><td class="r amt-base">$400</td><td class="r amt-zero">—</td><td class="r amt-green">$400</td><td class="r amt-owed">$2,335</td></tr>
         <tr><td class="tn">Cushing, Rebecca</td><td>13</td><td><span class="lot-badge">3</span></td><td class="r amt-base">$400</td><td class="r amt-zero">—</td><td class="r amt-green">$400</td><td class="r amt-zero">—</td></tr>
@@ -1735,11 +1735,21 @@ renderExpenses(capexData, 'capex-tbody', 'all');
           status = '✗ Unpaid'; statusClass = 'status-unpaid'; unpaidCount++;
         }
 
-        return `<tr><td class="tn">${r.tenant}</td><td>${r.unit}</td><td class="amt-base">${money(r.lot_rent)}</td><td class="amt-orange">${r.rc?money(r.rc):'—'}</td><td class="amt-green">${money(r.total)}</td><td class="${balClass}">${balStr}</td><td class="${statusClass}">${status}</td></tr>`;
+        // Compute current-month collected and monthly balance
+        const mBal = Math.min(Math.max(balance, 0), r.total); // this month's shortfall (capped at one month's rent)
+        const collected = r.total - mBal; // what they paid toward this month
+        const colStr = collected > 0 ? money(collected) : '$0';
+        const colClass = collected >= r.total ? 'amt-green' : (collected > 0 ? 'amt-orange' : 'amt-owed');
+        const mBalStr = mBal > 0 ? money(mBal) : '—';
+        const mBalClass = mBal > 0 ? 'amt-owed' : '';
+
+        return `<tr><td class="tn">${r.tenant} <span style="color:#6B7A8D;font-size:10px">Lot ${r.unit}</span></td><td>${r.unit_id?.replace(/^[AR]-/,'')||r.unit}</td><td class="amt-base">${money(r.lot_rent)}</td><td class="amt-orange">${r.rc?money(r.rc):'—'}</td><td class="amt-green">${money(r.total)}</td><td class="${colClass}">${colStr}</td><td class="${mBalClass}">${mBalStr}</td><td class="${statusClass}">${status}</td></tr>`;
       }).join('');
 
       const summary = `<span style="font-size:10px;color:#7b7f9e;margin-left:12px">${curMonth}: ${paidCount} paid, ${unpaidCount} unpaid${partialCount?', '+partialCount+' partial':''}</span>`;
-      tbody.innerHTML = rows + `<tr style="font-weight:700;border-top:2px solid #2e3248"><td>Total (${units.length} tenants)${summary}</td><td></td><td>${money(totalLot)}</td><td>${money(totalRC)}</td><td class="amt-green">${money(totalAll)}</td><td></td><td></td></tr>`;
+      const totalCollected = units.reduce((s,r)=>{const bal=balLookup[r.unit_id];const b=bal?bal.balance:0;return s+(r.total-Math.min(Math.max(b,0),r.total));},0);
+      const totalMBal = totalAll - totalCollected;
+      tbody.innerHTML = rows + `<tr style="font-weight:700;border-top:2px solid #2e3248"><td>Total (${units.length} tenants)${summary}</td><td></td><td>${money(totalLot)}</td><td>${money(totalRC)}</td><td class="amt-green">${money(totalAll)}</td><td class="${totalCollected>=totalAll?'amt-green':'amt-orange'}">${money(totalCollected)}</td><td class="${totalMBal>0?'amt-owed':''}">${totalMBal>0?money(totalMBal):'—'}</td><td></td></tr>`;
     }
     const amUnits = rm.rent_roll.filter(r=>r.property.includes('American'));
     const rwUnits = rm.rent_roll.filter(r=>r.property.includes('Redwood'));
